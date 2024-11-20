@@ -1,0 +1,11 @@
+{
+  "dependencies": {
+    "@hyoga/uni-socket.io": "^3.0.4",
+    "uview-ui": "^2.0.37"
+  },
+  "keywords": [
+      "ua-markdown",
+      "uni-markdown",
+      "markdown"
+  ]
+}
