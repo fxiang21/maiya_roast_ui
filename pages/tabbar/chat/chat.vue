@@ -249,8 +249,16 @@
 				if (typeof arr === 'string') {
 					return arr;
 				}
-				var dataview = new DataView(arr.data.buffer);
-				var ints = new Uint8Array(arr.data.buffer.byteLength);
+				let bufferData = ""
+				if (!(arr.data instanceof ArrayBuffer)) {
+					bufferData = arr.data.buffer
+				}else{
+					bufferData = arr.data
+				}
+				var dataview = new DataView(bufferData);
+				
+				console.log("2...........>>>")
+				var ints = new Uint8Array(bufferData.byteLength);
 				for (var i = 0; i < ints.length; i++) {
 					ints[i] = dataview.getUint8(i);
 				}
@@ -384,7 +392,7 @@
 							console.log("onHeadersReceived", onHeadersReceivedCallBack);
 						}, onChunkReceivedCallBack => {
 							if (!getApp().globalData.isDevTools()) {
-								
+								console.log("onChunkReceivedCallBack:", onChunkReceivedCallBack)
 								let requestData = that.arrayBufferToString(onChunkReceivedCallBack);
 								if (requestData.indexOf("WTALL:") > -1) {
 									requestData = requestData.substring(6, requestData.length);
@@ -400,6 +408,7 @@
 								console.log("message................", msg.user)
 								this.queueCount++;
 							} else {
+								console.log("2.............")
 								let requestData = "i am test answer";
 								result += requestData;
 								let msg = that.messages.pop();
@@ -455,6 +464,73 @@
 						that.addMessage("home", result, true);
 						this.queueCount++;
 					}
+				}else{
+					const requestData = {
+						'prompt': question,
+						"network": false,
+						"system": "",
+						"withoutContext": false,
+						"stream": true,
+						"rolePlay": false,
+					};
+					console.log("requestData:", requestData)
+						
+					requestTaskG = uni.http.streamFetch(this, requestData,
+						success => {
+							console.log("request success", success);
+						}, fail => {
+							console.log("request fail", fail);
+							//用户主动中断请求，不进行提示
+							if (fail.errMsg != 'request:fail abort') {
+								result += "服务器网络异常，请重试";
+								let msg = that.messages.pop();
+								if (msg.user === 'customer') {
+									that.messages.push(msg);
+								}
+								that.addMessage("home", result, true);
+								this.queueCount++;
+							}
+						}, complete => {
+							console.log("request complete", complete);
+							that.isLoading = false;
+							that.saveCache();
+							this.queueCount++;
+							// uni.hideLoading();
+						}, onHeadersReceivedCallBack => {
+							// uni.hideLoading();
+							console.log("onHeadersReceived", onHeadersReceivedCallBack);
+						}, onChunkReceivedCallBack => {
+							if (!getApp().globalData.isDevTools()) {
+								
+								// let requestData = that.arrayBufferToString(onChunkReceivedCallBack);
+								// if (requestData.indexOf("WTALL:") > -1) {
+								// 	requestData = requestData.substring(6, requestData.length);
+								// }
+								
+								requestData = onChunkReceivedCallBack
+								console.log("onChunkReceivedCallBack:", onChunkReceivedCallBack)
+								
+								result += requestData;
+								let msg = that.messages.pop();
+								if (msg.user === 'customer') {
+									that.messages.push(msg);
+									console.log("customer:", msg)
+								}
+								that.addMessage("home", result, true);
+								console.log("message................", msg.user)
+								this.queueCount++;
+							} else {
+								let requestData = "i am test answer";
+								result += requestData;
+								let msg = that.messages.pop();
+								if (msg.user === 'customer') {
+									that.messages.push(msg);
+								}
+								that.addMessage("home", result, true);
+								this.queueCount++;
+							}
+						}
+					);
 				}
 
 			},

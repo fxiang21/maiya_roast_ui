@@ -34,7 +34,8 @@ import * as websocket from '@/common/js/websocket.js'
 	export default {
 		globalData:{
 			isDev: false,
-			url: "http://192.168.0.108:8080/",
+			url: "http://192.168.0.108:8001/",
+			chatUrl: "http://192.168.0.108:8001/",
 			messageQueueName: 'messages_list_real_maiya',
 			platform: platform,
 			isBlank: function(data) {
@@ -92,6 +93,7 @@ import * as websocket from '@/common/js/websocket.js'
 			...mapMutations(["login"]),
 		},
 		onLaunch: function() {
+			
 			// #ifdef APP-PLUS
 			this.checkArguments(); // 检测启动参数
 			APPUpdate();
@@ -109,6 +111,7 @@ import * as websocket from '@/common/js/websocket.js'
 			uni.notice = notice;
 			uni.http = http;
 			uni.websocket = websocket
+			// uni.hideTabBar()
 		},
 
 		onShow() {
@@ -126,6 +129,7 @@ import * as websocket from '@/common/js/websocket.js'
 				}
 			}
 			// #endif
+			// uni.hideTabBar()
 		},
 		methods: {
 			/**
@@ -281,4 +285,9 @@ import * as websocket from '@/common/js/websocket.js'
 	.flex1 {
 		flex: 1; //必须父级设置flex
 	}
+	
+	
+	
+	
+	
 </style>

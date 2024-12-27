@@ -23,6 +23,23 @@
 			<uni-icons class="icon fas fa-search" @tap="sendMessge" type="paperplane-filled" size="24"
 				color="#757575"></uni-icons>
 		</div>
+		
+		 <!-- <view class="operate-textarea flex chat-width">
+		        <el-input
+		          ref="quickInputRef"
+		          v-model="inputValue"
+		          :placeholder="
+		            startRecorderTime
+		              ? '说话中...'
+		              : recorderLoading
+		                ? '转文字中...'
+		                : '请输入问题，Ctrl+Enter 换行，Enter发送'
+		          "
+		          :autosize="{ minRows: 1, maxRows: isMobile ? 4 : 10 }"
+		          type="textarea"
+		          :maxlength="100000"
+		          @keydown.enter="sendChatHandle($event)"
+		        /></view> -->
 
 
 		<!-- </view> -->

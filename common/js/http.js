@@ -93,9 +93,10 @@ function streamWx(that, requestData, successCallBack, failCallBack, completeCall
 	const appId = getApp().globalData.appId;
 	const temperatureObj = uni.getStorageSync(getApp().globalData.temperatureNameCacheName);
 	const modelObj = uni.getStorageSync(getApp().globalData.modeNameCacheName);
-	const requestTask = uni.request({
-		url: getApp().globalData.url + 'api/application/chat_message/9b6d87d2-937c-11ef-8c6d-0242ac120003',
+	const requestTask = wx.request({
+		url: getApp().globalData.chatUrl + 'api/application/chat_message/9b6d87d2-937c-11ef-8c6d-0242ac120003',
 		responseType: "arraybuffer",
+		// responseType: "text",
 		method: 'POST',
 		enableChunked: true,
 		header: {
@@ -112,7 +113,6 @@ function streamWx(that, requestData, successCallBack, failCallBack, completeCall
 			model: getApp().globalData.isBlank(modelObj) ? '' : modelObj.model,
 		},
 		success: (res) => {
-			console.log("success》》》》",getApp().globalData.url + 'ai/stream')
 			successCallBack(res);
 		},
 		complete: (res) => {
@@ -130,6 +130,90 @@ function streamWx(that, requestData, successCallBack, failCallBack, completeCall
 	});
 	return requestTask;
 }
+
+
+function streamFetch(that, requestData, successCallBack, failCallBack, completeCallBack, onChunkReceivedCallBack){
+	
+	const url = getApp().globalData.chatUrl + 'api/application/chat_message/9b6d87d2-937c-11ef-8c6d-0242ac120003'
+	const appId = getApp().globalData.appId;
+	const temperatureObj = uni.getStorageSync(getApp().globalData.temperatureNameCacheName);
+	const modelObj = uni.getStorageSync(getApp().globalData.modeNameCacheName);
+	// fetch(url, {
+	//   method: 'POST',
+	//   headers: {
+	// 	  'sslVerify': false,
+	// 	  'content-type': 'application/json',
+	// 	  'authU': uni.getStorageSync(getApp().globalData.openIdCacheName),
+	// 	  'auth': appId,
+	//   },
+	//   body: JSON.stringify({
+	//     ...requestData,
+	//     appId: getApp().globalData.appId,
+	//     openId: uni.getStorageSync(getApp().globalData.openIdCacheName),
+	//     temperatureStr: getApp().globalData.isBlank(temperatureObj) ? '' : temperatureObj.value,
+	//     model: getApp().globalData.isBlank(modelObj) ? '' : modelObj.model,
+	//   })
+	// })
+	// .then(response => {
+	//   if (!response.ok) {
+	//     throw new Error('Network response was not ok');
+	//   }
+	//   // 处理响应头
+	//   const headers = response.headers;
+	//   // 调用 onHeadersReceived 回调
+	//   onHeadersReceivedCallBack(headers);
+	
+	//   // 以流的形式处理数据
+	//   const reader = response.body.getReader();
+	//   let receivedLength = 0; // 接收到的字节数
+	//   let chunks = []; // 数组，用于存储接收到的 chunk 数据
+	
+	//   return new ReadableStream({
+	//     start(controller) {
+	//       function push() {
+	//         // 读取一个 chunk
+	//         reader.read().then(({done, value}) => {
+	//           if (done) {
+	//             // 流已经读取完毕
+	//             controller.close();
+	//             return;
+	//           }
+	//           // 将 chunk 数据添加到数组中
+	//           chunks.push(value);
+	//           receivedLength += value.length;
+	//           // 调用 onChunkReceived 回调
+	//           onChunkReceivedCallBack(value);
+	//           // 将 chunk 数据推送到流中
+	//           controller.enqueue(value);
+	//           push();
+	//         }).catch(error => {
+	//           console.error('Error reading stream:', error);
+	//           controller.error(error);
+	//         });
+	//       }
+	//       push();
+	//     }
+	//   });
+	// })
+	// .then(stream => new Response(stream))
+	// .then(response => response.arrayBuffer())
+	// .then(data => {
+	//   // 数据处理
+	//   console.log('Data received:', data);
+	//   successCallBack(data);
+	// })
+	// .catch(error => {
+	//   console.error('Error:', error);
+	//   failCallBack(error);
+	// })
+	// .finally(() => {
+	//   // 完成回调
+	//   completeCallBack();
+	// });
+	
+}
+
+
 
 
 
@@ -404,6 +488,7 @@ export {
 	updateNameAndImg,
 	streamDy,
 	streamWx,
+	streamFetch,
 	userLogin,
 	getProduceCategory,
 	getUserValidTime,
