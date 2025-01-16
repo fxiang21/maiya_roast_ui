@@ -71,20 +71,25 @@
         </view>
       </view>
 
-      <!-- 录音按钮 -->
-      <view class="record-container">
+      <!-- 录音按钮区域 -->
+      <view class="record-section">
+        <!-- 提示文字 -->
+        <text class="record-tip" :class="{ 'recording': isRecording }">
+          {{ isRecording ? '正在录音...' : '长按开始吐槽' }}
+        </text>
+        
+        <!-- 录音按钮 -->
         <view 
-          :class="['record-btn', {'recording': isRecording}]"
+          class="record-container"
           @touchstart="startRecord"
           @touchend="stopRecord"
         >
-          <view class="wave-container" v-if="isRecording">
+          <view class="wave-container" :class="{ 'recording': isRecording }">
             <view class="wave wave1"></view>
             <view class="wave wave2"></view>
             <view class="wave wave3"></view>
           </view>
-          <text class="iconfont icon-mic"></text>
-          <text v-if="isRecording" class="recording-tip">正在录音...</text>
+          <text class="icon-mic"></text>
         </view>
       </view>
     </view>
@@ -136,6 +141,9 @@ export default {
 
     // 初始化录音管理器
     this.initRecorder();
+
+    // 获取缓存的情绪数据
+    this.loadLastEmotion();
   },
 
   watch: {
@@ -152,6 +160,34 @@ export default {
           this.stopRainSound();
         }
       }
+    }
+  },
+
+  onHide() {
+    // 页面隐藏时停止音频播放
+    this.stopRainSound();
+    this.stopRainAnimation();
+  },
+
+  onUnload() {
+    // 页面卸载时停止音频播放并销毁资源
+    this.stopRainAnimation();
+    if (this.audioContext) {
+      this.audioContext.destroy();
+      this.audioContext = null;
+    }
+  },
+
+  onShow() {
+    // 页面显示时，如果是暴风天气，重新初始化动画
+    if (this.isStormWeather) {
+      this.$nextTick(() => {
+        this.initRainCanvas();
+        // 只有在非静音状态下才初始化音效
+        if (!this.isMuted) {
+          this.initRainSound();
+        }
+      });
     }
   },
 
@@ -238,6 +274,9 @@ export default {
             this.processEmotions(response.data.emotion.percentage);
             this.updateEncouragement(response.data.emotion.percentage);
             this.weatherType = response.data.emotion.weather || 'Cloudy';
+            
+            // 保存最新状态
+            this.saveLastEmotion();
             
             // 如果是暴风天气，初始化音效
             if (this.isStormWeather) {
@@ -334,6 +373,9 @@ export default {
           offsetY: offset.y
         };
       });
+
+      // 处理完情绪数据后保存到本地存储
+      this.saveLastEmotion();
     },
 
     updateEncouragement(percentages) {
@@ -538,15 +580,6 @@ export default {
       }
     },
 
-    // 组件销毁时清理资源
-    onUnload() {
-      this.stopRainAnimation();
-      if (this.audioContext) {
-        this.audioContext.destroy();
-        this.audioContext = null;
-      }
-    },
-
     // 计算气泡大小的方法
     calculateBubbleSize(percentage) {
       const minSize = 160;
@@ -580,6 +613,50 @@ export default {
         });
       }
     },
+
+    // 保存最后的情绪状态到本地存储
+    saveLastEmotion(emotionData) {
+      const today = new Date().toLocaleDateString();
+      const emotionCache = {
+        date: today,
+        emotions: this.emotions,
+        weatherType: this.weatherType,
+        encouragementText: this.encouragementText
+      };
+      uni.setStorageSync('lastEmotion', JSON.stringify(emotionCache));
+    },
+
+    // 加载最后的情绪状态
+    loadLastEmotion() {
+      try {
+        const today = new Date().toLocaleDateString();
+        const cachedEmotion = uni.getStorageSync('lastEmotion');
+        
+        if (cachedEmotion) {
+          const emotionData = JSON.parse(cachedEmotion);
+          
+          // 只恢复当天的情绪数据
+          if (emotionData.date === today) {
+            this.emotions = emotionData.emotions;
+            this.weatherType = emotionData.weatherType;
+            this.encouragementText = emotionData.encouragementText;
+            
+            // 加载完数据后，如果是暴风天气，初始化动画
+            if (this.isStormWeather) {
+              this.$nextTick(() => {
+                this.initRainCanvas();
+                // 只有在非静音状态下才初始化音效
+                if (!this.isMuted) {
+                  this.initRainSound();
+                }
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.error('加载缓存情绪数据失败:', error);
+      }
+    },
   }
 }
 </script>
@@ -589,6 +666,7 @@ export default {
   min-height: 100vh;
   background: linear-gradient(135deg, #1a2a6c, #2a4858);
   position: relative;
+  z-index: 1;
 }
 
 .status-bar {
@@ -601,6 +679,8 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  position: relative;
+  z-index: 2;
 }
 
 .date-wrapper {
@@ -640,7 +720,7 @@ export default {
   margin-right: 40rpx;
   position: absolute;
   right: 0;
-  z-index: 100;
+  z-index: 3;
   
   &:active {
     background: rgba(255, 255, 255, 0.3);
@@ -696,11 +776,11 @@ export default {
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 1;
+  z-index: 0;
   pointer-events: none;
 }
 
-.content-wrapper {
+.content {
   position: relative;
   z-index: 2;
   height: 100%;
@@ -712,6 +792,8 @@ export default {
   align-items: flex-start;  // 左对齐
   gap: 30rpx;
   margin-bottom: 40rpx;
+  position: relative;
+  z-index: 2;
   
   .date-section {
     font-size: 48rpx;
@@ -745,6 +827,8 @@ export default {
   border-radius: 20rpx;
   text-align: center;
   border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  z-index: 2;
   
   text {
     font-size: 36rpx;
@@ -757,11 +841,12 @@ export default {
 .emotion-bubbles {
   position: relative;
   width: 100%;
-  height: 800rpx; // 调整容器高度
+  height: 600rpx; // 减小容器高度，给底部按钮留出空间
   margin: 50rpx 0;
   display: flex;
   justify-content: center;
   align-items: center;
+  z-index: 2;
   
   .bubble {
     position: absolute;
@@ -813,30 +898,54 @@ export default {
   }
 }
 
-.record-container {
+.record-section {
   position: fixed;
-  bottom: 140rpx;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 100;
+  z-index: 3;
+  bottom: 100rpx; // 距离底部的距离
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-.record-btn {
-  width: 120rpx;
-  height: 120rpx;
-  background: linear-gradient(135deg, #007AFF, #0056b3);
-  border-radius: 50%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: relative;
+.record-tip {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 20rpx;
+  padding: 10rpx 30rpx;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 30rpx;
+  backdrop-filter: blur(10px);
   transition: all 0.3s ease;
-  box-shadow: 0 6rpx 16rpx rgba(0, 122, 255, 0.3);
   
   &.recording {
-    background: linear-gradient(135deg, #ff4444, #cc0000);
-    transform: scale(1.1);
-    box-shadow: 0 8rpx 20rpx rgba(255, 68, 68, 0.4);
+    background: rgba(255, 82, 82, 0.2);
+    color: #fff;
+  }
+}
+
+.record-container {
+  position: relative;
+  width: 120rpx;
+  height: 120rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  
+  &:active {
+    transform: scale(0.95);
+    background: rgba(255, 82, 82, 0.3);
+  }
+  
+  .icon-mic {
+    font-size: 48rpx;
+    color: #ffffff;
   }
 }
 
@@ -844,29 +953,57 @@ export default {
   position: absolute;
   width: 100%;
   height: 100%;
-}
-
-.wave {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.2);
   border-radius: 50%;
-  animation: ripple 2s linear infinite;
+  opacity: 0;
+  transition: opacity 0.3s ease;
   
-  &.wave1 { animation-delay: 0s; }
-  &.wave2 { animation-delay: 0.6s; }
-  &.wave3 { animation-delay: 1.2s; }
+  &.recording {
+    opacity: 1;
+  }
+  
+  .wave {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: rgba(255, 82, 82, 0.2);
+    animation: waveEffect 2s infinite;
+    
+    &.wave1 {
+      animation-delay: 0s;
+    }
+    
+    &.wave2 {
+      animation-delay: 0.5s;
+    }
+    
+    &.wave3 {
+      animation-delay: 1s;
+    }
+  }
 }
 
-@keyframes ripple {
+@keyframes waveEffect {
   0% {
     transform: scale(1);
-    opacity: 0.4;
+    opacity: 0.8;
   }
   100% {
     transform: scale(2);
     opacity: 0;
+  }
+}
+
+// 添加按压提示动画
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 82, 82, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 20rpx rgba(255, 82, 82, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 82, 82, 0);
   }
 }
 
