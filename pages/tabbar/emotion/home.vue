@@ -120,9 +120,6 @@ export default {
       return `https://maiya-prod.oss-cn-shanghai.aliyuncs.com/icon/roast/emotions/${this.weatherType.toLowerCase()}-nbg.png`;
     },
     isStormWeather() {
-      console.log("isStormWeather")
-      console.log("isStormWeather", this.weatherType)
-      console.log("isStormWeather", this.weatherType?.toLowerCase())
       return this.weatherType?.toLowerCase() === 'storm';
     }
   },
@@ -146,49 +143,35 @@ export default {
     this.loadLastEmotion();
   },
 
-  watch: {
-    isStormWeather: {
-      immediate: true,
-      handler(newVal) {
-        if (newVal) {
-          this.$nextTick(() => {
-            this.initRainCanvas();
-            this.initRainSound();
-          });
-        } else {
-          this.stopRainAnimation();
-          this.stopRainSound();
-        }
-      }
+  onShow() {
+    // 页面显示时（包括切换回标签），如果是暴风天气，重新初始化
+    if (this.isStormWeather) {
+      this.$nextTick(() => {
+        this.initRainCanvas();
+        // 根据静音状态决定是否初始化音效
+        this.initRainSound();
+      });
     }
   },
 
   onHide() {
-    // 页面隐藏时停止音频播放
-    this.stopRainSound();
+    // 页面隐藏时（包括切换标签）完全停止音频
+    if (this.audioContext) {
+      this.audioContext.stop(); // 停止播放
+      this.audioContext.destroy(); // 销毁音频实例
+      this.audioContext = null; // 清空引用
+    }
     this.stopRainAnimation();
   },
 
   onUnload() {
     // 页面卸载时停止音频播放并销毁资源
-    this.stopRainAnimation();
     if (this.audioContext) {
+      this.audioContext.stop();
       this.audioContext.destroy();
       this.audioContext = null;
     }
-  },
-
-  onShow() {
-    // 页面显示时，如果是暴风天气，重新初始化动画
-    if (this.isStormWeather) {
-      this.$nextTick(() => {
-        this.initRainCanvas();
-        // 只有在非静音状态下才初始化音效
-        if (!this.isMuted) {
-          this.initRainSound();
-        }
-      });
-    }
+    this.stopRainAnimation();
   },
 
   methods: {
@@ -525,81 +508,59 @@ export default {
       }
     },
 
-    // 初始化雨声音效
+    // 修改初始化音效方法
     initRainSound() {
-      if (!this.audioContext) {
-        this.audioContext = uni.createInnerAudioContext();
-        this.audioContext.src = 'https://maiya-prod.oss-cn-shanghai.aliyuncs.com/audio/storm.mp3';
-        this.audioContext.loop = true;
-        
-        // 设置初始音量
-        this.audioContext.volume = 0;
-        
-        // 监听音频加载状态
-        this.audioContext.onCanplay(() => {
-          console.log('音频准备就绪');
-        });
-        
-        // 监听音频错误
-        this.audioContext.onError((res) => {
-          console.error('音频播放错误:', res);
-        });
-        
-        // 监听音频播放状态
-        this.audioContext.onPlay(() => {
-          console.log('音频开始播放');
-          if (!this.isMuted) {
-            this.fadeInAudio();
-          }
-        });
-        
-        // 确保在用户交互后再播放
-        this.audioContext.play();
-      }
-    },
-
-    // 音量淡入效果
-    fadeInAudio() {
-      if (!this.audioContext) return;
-      
-      let volume = 0;
-      const fadeInterval = setInterval(() => {
-        volume += 0.1;
-        if (volume >= 0.5) {
-          clearInterval(fadeInterval);
-          volume = 0.5;
-        }
-        this.audioContext.volume = volume;
-      }, 100);
-    },
-
-    // 停止音效
-    stopRainSound() {
+      // 确保之前的音频实例被清理
       if (this.audioContext) {
         this.audioContext.stop();
+        this.audioContext.destroy();
+        this.audioContext = null;
       }
-    },
 
-    // 计算气泡大小的方法
-    calculateBubbleSize(percentage) {
-      const minSize = 160;
-      const maxSize = 300;
-      return minSize + (percentage / 100) * (maxSize - minSize);
+      // 创建新的音频实例
+      this.audioContext = uni.createInnerAudioContext();
+      this.audioContext.src = 'https://maiya-prod.oss-cn-shanghai.aliyuncs.com/audio/storm.mp3';
+      this.audioContext.loop = true;
+      
+      // 根据静音状态设置初始音量
+      this.audioContext.volume = this.isMuted ? 0 : 0.5;
+      
+      // 监听音频加载状态
+      this.audioContext.onCanplay(() => {
+        console.log('音频准备就绪');
+      });
+      
+      // 监听音频错误
+      this.audioContext.onError((res) => {
+        console.error('音频播放错误:', res);
+      });
+      
+      // 监听音频播放状态
+      this.audioContext.onPlay(() => {
+        console.log('音频开始播放');
+        if (!this.isMuted) {
+          this.fadeInAudio();
+        }
+      });
+      
+      // 播放音频
+      this.audioContext.play();
     },
 
     // 切换声音状态
     toggleSound() {
-      if (!this.audioContext) return;
+      if (!this.audioContext) {
+        this.initRainSound();
+      }
       
       try {
-        if (this.isMuted) {
-          // 恢复声音前确保音频在播放
-          this.audioContext.play();
-          this.fadeInAudio();
-        } else {
-          this.audioContext.volume = 0;
-        }
         this.isMuted = !this.isMuted;
+        
+        if (this.isMuted) {
+          this.audioContext.volume = 0;
+        } else {
+          this.fadeInAudio();
+        }
         
         uni.showToast({
           title: this.isMuted ? '已静音' : '已开启声音',
@@ -614,8 +575,46 @@ export default {
       }
     },
 
+    // 音量淡入效果
+    fadeInAudio() {
+      if (!this.audioContext || this.isMuted) return;
+      
+      let volume = 0;
+      const fadeInterval = setInterval(() => {
+        if (this.isMuted) {
+          clearInterval(fadeInterval);
+          return;
+        }
+        
+        volume += 0.1;
+        if (volume >= 0.5) {
+          clearInterval(fadeInterval);
+          volume = 0.5;
+        }
+        if (this.audioContext) {
+          this.audioContext.volume = volume;
+        }
+      }, 100);
+    },
+
+    // 停止音效的方法
+    stopRainSound() {
+      if (this.audioContext) {
+        this.audioContext.stop();
+        this.audioContext.destroy();
+        this.audioContext = null;
+      }
+    },
+
+    // 计算气泡大小的方法
+    calculateBubbleSize(percentage) {
+      const minSize = 160;
+      const maxSize = 300;
+      return minSize + (percentage / 100) * (maxSize - minSize);
+    },
+
     // 保存最后的情绪状态到本地存储
-    saveLastEmotion(emotionData) {
+    saveLastEmotion() {
       const today = new Date().toLocaleDateString();
       const emotionCache = {
         date: today,
@@ -666,7 +665,7 @@ export default {
   min-height: 100vh;
   background: linear-gradient(135deg, #1a2a6c, #2a4858);
   position: relative;
-  z-index: 1;
+  z-index: 1; // 基础层级
 }
 
 .status-bar {
@@ -776,13 +775,13 @@ export default {
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 0;
-  pointer-events: none;
+  z-index: -1; // 设置为-1，确保在最底层
+  pointer-events: none; // 确保不影响页面交互
 }
 
 .content {
   position: relative;
-  z-index: 2;
+  z-index: 1; // 提高层级
   height: 100%;
 }
 
@@ -793,7 +792,7 @@ export default {
   gap: 30rpx;
   margin-bottom: 40rpx;
   position: relative;
-  z-index: 2;
+  z-index: 1;
   
   .date-section {
     font-size: 48rpx;
@@ -828,7 +827,7 @@ export default {
   text-align: center;
   border: 1px solid rgba(255, 255, 255, 0.1);
   position: relative;
-  z-index: 2;
+  z-index: 1;
   
   text {
     font-size: 36rpx;
@@ -846,7 +845,7 @@ export default {
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 2;
+  z-index: 1;
   
   .bubble {
     position: absolute;
@@ -900,8 +899,8 @@ export default {
 
 .record-section {
   position: fixed;
-  z-index: 3;
-  bottom: 100rpx; // 距离底部的距离
+  z-index: 2; // 录音按钮保持在最上层
+  bottom: 100rpx;
   left: 0;
   right: 0;
   display: flex;
