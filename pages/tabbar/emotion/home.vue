@@ -1,56 +1,48 @@
 <template>
-  <view class="container" :class="{ 'storm-weather': isStormWeather }">
-    <!-- 添加状态栏占位 -->
-    <view class="status-bar" :style="{ height: statusBarHeight + 'px' }"></view>
+  <view class="container">
+    <!-- WeatherDisplay 作为背景 -->
+    <WeatherDisplay 
+      :weatherType="weatherType" 
+      :isMuted="isMuted"
+    />
     
-    <!-- 顶部栏 -->
-    <view class="top-section">
-      <!-- 日期 -->
-      <view class="date-wrapper">
-        <text class="date-text">{{ currentDate }}</text>
-        <view class="date-underline"></view>
-      </view>
+    <!-- 内容层，确保在背景之上 -->
+    <view class="content" style="position: relative; z-index: 2;">
+      <!-- 添加状态栏占位 -->
+      <view class="status-bar" :style="{ height: statusBarHeight + 'px' }"></view>
       
-      <!-- 调整音量控制按钮位置 -->
-      <view 
-        v-if="isStormWeather" 
-        class="volume-control"
-        @tap="toggleSound"
-      >
-        <text class="iconfont" :class="isMuted ? 'icon-jingyin-F' : 'icon-yinliang-L'"></text>
+      <!-- 顶部栏 -->
+      <view class="top-section">
+        <!-- 日期 -->
+        <view class="date-wrapper">
+          <text class="date-text">{{ currentDate }}</text>
+          <view class="date-underline"></view>
+        </view>
+        
+        <!-- 音量控制按钮，现在对所有天气都显示 -->
+        <view 
+          class="volume-control"
+          @tap="toggleSound"
+        >
+          <text class="iconfont" :class="isMuted ? 'icon-jingyin-F' : 'icon-yinliang-L'"></text>
+        </view>
       </view>
-    </view>
 
-    <!-- 雨滴动画画布 -->
-    <canvas v-if="isStormWeather" 
-      canvas-id="rainCanvas"
-      id="rainCanvas"
-      class="rain-canvas"
-      type="2d"
-    ></canvas>
-    
-    <!-- 顶部信息区域 -->
-    <view class="info-section">
-      <view class="weather-icon">
-        <image 
-          :src="weatherIconUrl" 
-          mode="aspectFit"
-          :style="{ filter: 'brightness(0) invert(1)' }"
-        ></image>
+      <!-- 顶部信息区域 -->
+      <view class="info-section">
+        <view class="weather-icon">
+          <image 
+            :src="weatherIconUrl" 
+            mode="aspectFit"
+            :style="{ filter: 'brightness(0) invert(1)' }"
+          ></image>
+        </view>
       </view>
-    </view>
 
-    <!-- 鼓励语句 -->
-    <view class="encouragement">
-      <text>{{ encouragementText }}</text>
-    </view>
-
-    <!-- 主要内容区域 -->
-    <view class="content">
-      <!-- 语音识别结果 -->
-      <!-- <view class="result-box" v-if="stResult">
-        <text class="result-text">{{stResult}}</text>
-      </view> -->
+      <!-- 鼓励语句 -->
+      <view class="encouragement">
+        <text>{{ encouragementText }}</text>
+      </view>
 
       <!-- 情绪气泡图 -->
       <view class="emotion-bubbles" v-if="emotions.length > 0">
@@ -97,10 +89,14 @@
 </template>
 
 <script>
+import WeatherDisplay from '@/components/WeatherDisplay.vue'
 const recorderManager = uni.getRecorderManager();
 const app = getApp();
 
 export default {
+  components: {
+    WeatherDisplay,
+  },
   data() {
     return {
       statusBarHeight: 0,
@@ -117,14 +113,18 @@ export default {
 
   computed: {
     weatherIconUrl() {
+      console.log('当前 weatherType:', this.weatherType);
       return `https://maiya-prod.oss-cn-shanghai.aliyuncs.com/icon/roast/emotions/${this.weatherType.toLowerCase()}-nbg.png`;
     },
     isStormWeather() {
-      return this.weatherType?.toLowerCase() === 'storm';
+      const isStorm = this.weatherType?.toLowerCase() === 'storm';
+      console.log('是否为暴风天气:', isStorm);
+      return isStorm;
     }
   },
 
   created() {
+    console.log('组件创建，初始 weatherType:', this.weatherType);
     // 获取系统状态栏高度
     const systemInfo = uni.getSystemInfoSync();
     this.statusBarHeight = systemInfo.statusBarHeight || 20;
@@ -143,35 +143,56 @@ export default {
     this.loadLastEmotion();
   },
 
+  mounted() {
+    console.log('组件挂载完成，当前 weatherType:', this.weatherType);
+  },
+
   onShow() {
-    // 页面显示时（包括切换回标签），如果是暴风天气，重新初始化
-    if (this.isStormWeather) {
-      this.$nextTick(() => {
-        this.initRainCanvas();
-        // 根据静音状态决定是否初始化音效
-        this.initRainSound();
-      });
+    console.log('页面显示，当前静音状态:', this.isMuted);
+    // 页面显示时，根据静音状态决定是否恢复播放
+    if (this.audioContext && !this.isMuted) {
+      this.audioContext.play();
     }
   },
 
   onHide() {
-    // 页面隐藏时（包括切换标签）完全停止音频
+    console.log('页面隐藏');
+    uni.$emit('tabChange', 'other');
+    // 页面隐藏时暂停音频
+    console.log('页面隐藏，暂停音频');
     if (this.audioContext) {
-      this.audioContext.stop(); // 停止播放
-      this.audioContext.destroy(); // 销毁音频实例
-      this.audioContext = null; // 清空引用
+      this.audioContext.pause();
     }
-    this.stopRainAnimation();
   },
 
   onUnload() {
-    // 页面卸载时停止音频播放并销毁资源
+    // 页面卸载时停止并销毁音频
+    console.log('页面卸载，停止音频');
     if (this.audioContext) {
       this.audioContext.stop();
       this.audioContext.destroy();
       this.audioContext = null;
     }
-    this.stopRainAnimation();
+  },
+
+  onLoad() {
+    console.log('=== 页面加载 ===');
+    // 从缓存读取静音状态
+    try {
+      const mutedStatus = uni.getStorageSync('weatherAudioMuted');
+      console.log('从缓存读取的原始值:', mutedStatus);
+      this.isMuted = mutedStatus === true;
+      console.log('设置初始静音状态:', this.isMuted);
+    } catch (e) {
+      console.error('读取静音状态失败:', e);
+    }
+  },
+
+  // 监听标签页切换
+  onTabItemTap(e) {
+    console.log('标签页切换:', e);
+    // 发送标签页切换事件
+    uni.$emit('tabChange', 'emotion');
   },
 
   methods: {
@@ -182,22 +203,26 @@ export default {
 
     // 检查图片是否存在
     async checkImageExists(url) {
+      console.log('正在检查图片URL:', url); // 添加日志
       try {
         const res = await uni.request({
           url: url,
-          method: 'HEAD'
+          method: 'HEAD',
+          timeout: 5000, // 添加超时设置
         });
-        return res.statusCode === 200;
+        console.log('图片检查响应:', res); // 添加日志
+        // 修改判断逻辑，200-299 的状态码都认为是成功
+        return res.statusCode >= 200 && res.statusCode < 300;
       } catch (error) {
-        console.error('检查图片失败:', error);
-        return false;
+        console.error('检查图片失败，详细错误:', error); // 添加详细错误日志
+        // 如果是网络错误，我们假设图片存在（因为之前能用）
+        return true; // 修改为在发生错误时返回 true
       }
     },
 
-    async updateWeatherType(weather) {
-      const imageUrl = `https://maiya-prod.oss-cn-shanghai.aliyuncs.com/icon/roast/emotions/${weather.toLowerCase()}-nbg.png`;
-      const exists = await this.checkImageExists(imageUrl);
-      this.weatherType = exists ? weather : 'Cloudy';
+    async updateWeatherType(type) {
+      console.log('更新天气类型:', type);
+      this.weatherType = type;
     },
 
     // 初始化录音管理器
@@ -243,6 +268,7 @@ export default {
           Object.assign(uploadResult, mockResponse);
           try {
             response = JSON.parse(uploadResult.data);
+            console.log('服务器返回的天气类型:', response.data.emotion.weather);
           } catch (parseError) {
             console.error('解析响应数据失败:', parseError);
             uni.showToast({
@@ -256,20 +282,18 @@ export default {
             this.stResult = response.data.text;
             this.processEmotions(response.data.emotion.percentage);
             this.updateEncouragement(response.data.emotion.percentage);
-            this.weatherType = response.data.emotion.weather || 'Cloudy';
+            console.log('准备更新天气为:', response.data.emotion.weather);
+            await this.updateWeatherType(response.data.emotion.weather || 'Cloudy');
             
             // 保存最新状态
             this.saveLastEmotion();
             
-            // 如果是暴风天气，初始化音效
-            if (this.isStormWeather) {
-              this.initRainSound();
-            }
+            // 如果需要，天气组件会自动根据 weatherType 更新
           } else {
             throw new Error(response.message || '分析失败');
           }
         } catch (error) {
-          console.error('上传失败:', error);
+          console.error('上传或处理失败:', error);
           uni.showToast({
             title: error.message || '上传失败',
             icon: 'none'
@@ -391,221 +415,6 @@ export default {
       this.encouragementText = list[Math.floor(Math.random() * list.length)];
     },
 
-    // 初始化雨滴画布
-    async initRainCanvas() {
-      try {
-        const query = uni.createSelectorQuery().in(this);
-        query.select('#rainCanvas')
-          .fields({ node: true, size: true })
-          .exec((res) => {
-            const canvas = res[0].node;
-            const ctx = canvas.getContext('2d');
-            
-            // 设置画布尺寸
-            const dpr = uni.getSystemInfoSync().pixelRatio;
-            canvas.width = res[0].width * dpr;
-            canvas.height = res[0].height * dpr;
-            ctx.scale(dpr, dpr);
-            
-            this.ctx = ctx;
-            this.canvasWidth = res[0].width;
-            this.canvasHeight = res[0].height;
-            
-            // 初始化雨滴
-            this.initRaindrops();
-            // 开始动画
-            this.startRainAnimation();
-          });
-      } catch (error) {
-        console.error('初始化画布失败:', error);
-      }
-    },
-
-    // 初始化雨滴数组
-    initRaindrops() {
-      const numberOfDrops = 200;
-      this.raindrops = [];
-
-      for (let i = 0; i < numberOfDrops; i++) {
-        this.raindrops.push({
-          x: Math.random() * this.canvasWidth,
-          y: Math.random() * this.canvasHeight,
-          length: Math.random() * 20 + 10,
-          speed: Math.random() * 5 + 8,  // 降低速度范围
-          thickness: Math.random() * 2 + 1,
-          angle: Math.random() * 10 + 15  // 添加倾斜角度 (15-25度)
-        });
-      }
-    },
-
-    // 绘制单个雨滴
-    drawRaindrop(drop) {
-      const ctx = this.ctx;
-      const angleInRadians = (drop.angle * Math.PI) / 180; // 转换角度为弧度
-      
-      // 计算终点坐标
-      const endX = drop.x + Math.sin(angleInRadians) * drop.length;
-      const endY = drop.y + Math.cos(angleInRadians) * drop.length;
-      
-      ctx.beginPath();
-      ctx.moveTo(drop.x, drop.y);
-      ctx.lineTo(endX, endY);
-      ctx.lineWidth = drop.thickness;
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-      ctx.lineCap = 'round';
-      ctx.stroke();
-    },
-
-    // 更新雨滴位置
-    updateRaindrops() {
-      for (let drop of this.raindrops) {
-        // 同时更新x和y坐标以保持倾斜角度
-        const angleInRadians = (drop.angle * Math.PI) / 180;
-        drop.x += Math.sin(angleInRadians) * drop.speed;
-        drop.y += Math.cos(angleInRadians) * drop.speed;
-        
-        // 如果雨滴超出画布，重置位置
-        if (drop.y > this.canvasHeight) {
-          drop.y = -drop.length;
-          drop.x = Math.random() * this.canvasWidth;
-        }
-        // 如果雨滴超出右边界，重置到左边
-        if (drop.x > this.canvasWidth) {
-          drop.x = 0;
-        }
-      }
-    },
-
-    // 动画循环
-    animate() {
-      if (!this.isAnimating) return;
-      
-      this.ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
-      
-      this.updateRaindrops();
-      for (let drop of this.raindrops) {
-        this.drawRaindrop(drop);
-      }
-      
-      this.animationFrame = setTimeout(() => {
-        this.animate();
-      }, 1000 / 30); // 降低到30fps
-    },
-
-    // 开始动画
-    startRainAnimation() {
-      if (this.isAnimating) return;
-      this.isAnimating = true;
-      this.animate();
-    },
-
-    // 停止动画
-    stopRainAnimation() {
-      this.isAnimating = false;
-      if (this.animationFrame) {
-        clearTimeout(this.animationFrame);
-        this.animationFrame = null;
-      }
-    },
-
-    // 修改初始化音效方法
-    initRainSound() {
-      // 确保之前的音频实例被清理
-      if (this.audioContext) {
-        this.audioContext.stop();
-        this.audioContext.destroy();
-        this.audioContext = null;
-      }
-
-      // 创建新的音频实例
-      this.audioContext = uni.createInnerAudioContext();
-      this.audioContext.src = 'https://maiya-prod.oss-cn-shanghai.aliyuncs.com/audio/storm.mp3';
-      this.audioContext.loop = true;
-      
-      // 根据静音状态设置初始音量
-      this.audioContext.volume = this.isMuted ? 0 : 0.5;
-      
-      // 监听音频加载状态
-      this.audioContext.onCanplay(() => {
-        console.log('音频准备就绪');
-      });
-      
-      // 监听音频错误
-      this.audioContext.onError((res) => {
-        console.error('音频播放错误:', res);
-      });
-      
-      // 监听音频播放状态
-      this.audioContext.onPlay(() => {
-        console.log('音频开始播放');
-        if (!this.isMuted) {
-          this.fadeInAudio();
-        }
-      });
-      
-      // 播放音频
-      this.audioContext.play();
-    },
-
-    // 切换声音状态
-    toggleSound() {
-      if (!this.audioContext) {
-        this.initRainSound();
-      }
-      
-      try {
-        this.isMuted = !this.isMuted;
-        
-        if (this.isMuted) {
-          this.audioContext.volume = 0;
-        } else {
-          this.fadeInAudio();
-        }
-        
-        uni.showToast({
-          title: this.isMuted ? '已静音' : '已开启声音',
-          icon: 'none'
-        });
-      } catch (error) {
-        console.error('音频控制错误:', error);
-        uni.showToast({
-          title: '音频控制失败',
-          icon: 'none'
-        });
-      }
-    },
-
-    // 音量淡入效果
-    fadeInAudio() {
-      if (!this.audioContext || this.isMuted) return;
-      
-      let volume = 0;
-      const fadeInterval = setInterval(() => {
-        if (this.isMuted) {
-          clearInterval(fadeInterval);
-          return;
-        }
-        
-        volume += 0.1;
-        if (volume >= 0.5) {
-          clearInterval(fadeInterval);
-          volume = 0.5;
-        }
-        if (this.audioContext) {
-          this.audioContext.volume = volume;
-        }
-      }, 100);
-    },
-
-    // 停止音效的方法
-    stopRainSound() {
-      if (this.audioContext) {
-        this.audioContext.stop();
-        this.audioContext.destroy();
-        this.audioContext = null;
-      }
-    },
-
     // 计算气泡大小的方法
     calculateBubbleSize(percentage) {
       const minSize = 160;
@@ -633,21 +442,18 @@ export default {
         
         if (cachedEmotion) {
           const emotionData = JSON.parse(cachedEmotion);
+          console.log('加载缓存的情绪数据:', emotionData);
           
-          // 只恢复当天的情绪数据
           if (emotionData.date === today) {
             this.emotions = emotionData.emotions;
             this.weatherType = emotionData.weatherType;
+            console.log('从缓存加载的天气类型:', this.weatherType);
             this.encouragementText = emotionData.encouragementText;
             
             // 加载完数据后，如果是暴风天气，初始化动画
             if (this.isStormWeather) {
               this.$nextTick(() => {
-                this.initRainCanvas();
-                // 只有在非静音状态下才初始化音效
-                if (!this.isMuted) {
-                  this.initRainSound();
-                }
+                // Storm.vue 已经独立处理画布和音效
               });
             }
           }
@@ -656,16 +462,41 @@ export default {
         console.error('加载缓存情绪数据失败:', error);
       }
     },
+
+    onTouchStart() {
+      console.log('音量按钮触摸开始');
+    },
+
+    onTouchEnd() {
+      console.log('音量按钮触摸结束');
+    },
+
+    onMutedChange(value) {
+      console.log('子组件通知静音状态变化:', value);
+      this.isMuted = value;
+    },
+
+    toggleSound() {
+      console.log('音量控制按钮被点击，当前静音状态:', this.isMuted);
+      this.isMuted = !this.isMuted;
+      
+      // 保存到缓存
+      try {
+        uni.setStorageSync('weatherAudioMuted', this.isMuted);
+        console.log('新的静音状态已保存:', this.isMuted);
+      } catch (e) {
+        console.error('保存静音状态失败:', e);
+      }
+    },
   }
 }
 </script>
 
 <style lang="scss" scoped>
 .container {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #1a2a6c, #2a4858);
   position: relative;
-  z-index: 1; // 基础层级
+  width: 100%;
+  height: 100vh;
 }
 
 .status-bar {
@@ -707,19 +538,23 @@ export default {
 }
 
 .volume-control {
-  width: 60rpx;
-  height: 60rpx;
+  position: fixed;
+  top: var(--status-bar-height);
+  right: 40rpx;
+  width: 80rpx;
+  height: 80rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(10px);
   border-radius: 50%;
-  margin-top: 120rpx;
-  margin-right: 40rpx;
-  position: absolute;
-  right: 0;
-  z-index: 3;
+  z-index: 9999;
+  
+  .iconfont {
+    font-size: 36rpx;
+    color: #ffffff;
+  }
   
   &:active {
     background: rgba(255, 255, 255, 0.3);
@@ -746,9 +581,9 @@ export default {
 // 确保添加了字体图标
 @font-face {
   font-family: 'iconfont';  /* Project id 4812679 */
-  src: url('//at.alicdn.com/t/c/font_4812679_texyz48oe7l.woff2?t=1737000973584') format('woff2'),
-       url('//at.alicdn.com/t/c/font_4812679_texyz48oe7l.woff?t=1737000973584') format('woff'),
-       url('//at.alicdn.com/t/c/font_4812679_texyz48oe7l.ttf?t=1737000973584') format('truetype');
+  src: url('https://at.alicdn.com/t/c/font_4812679_8elh349vf1l.woff2?t=1737091794388') format('woff2'),
+       url('https://at.alicdn.com/t/c/font_4812679_8elh349vf1l.woff?t=1737091794388') format('woff'),
+       url('https://at.alicdn.com/t/c/font_4812679_8elh349vf1l.ttf?t=1737091794388') format('truetype');
 }
 
 .icon-mic {
@@ -769,19 +604,10 @@ export default {
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
 }
 
-.rain-canvas {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: -1; // 设置为-1，确保在最底层
-  pointer-events: none; // 确保不影响页面交互
-}
-
 .content {
   position: relative;
-  z-index: 1; // 提高层级
+  z-index: 2;
+  pointer-events: auto;
   height: 100%;
 }
 
@@ -1018,4 +844,23 @@ export default {
     padding-top: env(safe-area-inset-top);
   }
 }
+
+/* 确保其他所有内容组件都有更高的 z-index */
+.top-section,
+.info-section,
+.emotion-bubbles,
+.record-section,
+.volume-control {
+  position: relative;
+  z-index: 2;
+}
+
+// .black-hole-effect {
+//   position: absolute;
+//   top: 0;
+//   left: 0;
+//   width: 100%;
+//   height: 100%;
+//   z-index: 1; // 调整层级确保不会遮挡其他内容
+// }
 </style>

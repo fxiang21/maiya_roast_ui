@@ -1,11 +1,12 @@
 {
   "dependencies": {
     "@hyoga/uni-socket.io": "^3.0.4",
+    "lottie-web": "^5.12.2",
     "uview-ui": "^2.0.37"
   },
   "keywords": [
-      "ua-markdown",
-      "uni-markdown",
-      "markdown"
+    "ua-markdown",
+    "uni-markdown",
+    "markdown"
   ]
 }
