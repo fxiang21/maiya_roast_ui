@@ -484,6 +484,71 @@ function number(a, b) {
 	return a * b;
 }
 
+/**
+ * 情绪分析上传
+ * @param {Object} tempFilePath 录音文件路径
+ * @param {Function} successCallback 成功回调
+ * @param {Function} failCallback 失败回调
+ */
+function uploadEmotionAudio(tempFilePath, successCallback, failCallback) {
+	const app = getApp();
+	uni.uploadFile({
+		url: `${app.globalData.url}/emotion/analysis`,
+		filePath: tempFilePath,
+		name: 'file',
+		formData: {
+			is_public: true
+		},
+		header: {
+			'content-type': 'multipart/form-data',
+			'Authorization': uni.getStorageSync('token')
+		},
+		success: (res) => {
+			try {
+				// 测试数据
+				console.log("res", res);
+				const mockResponse = {
+					data: JSON.stringify({
+						"code": 200,
+						"message": "情感分析成功",
+						"data": {
+							"emotion": {
+								"percentage": {
+									"平静": 40,
+									"悲伤": 30,
+									"愤怒": 30
+								},
+								"category": "工作",
+								"target": "老板",
+								"weather": "Cloudy",
+								"encourage": "别因为一时的批评而气馁，每一次挫折都是成长的阶梯，相信自己，未来一定能绽放光彩。"
+							},
+							"is_public": true,
+							"text": "今天被老板骂了，哎"
+						}
+					})
+				};
+				// 使用模拟数据替换真实响应
+				console.log("res.data", mockResponse.data);
+				Object.assign(res, mockResponse);
+				const response = JSON.parse(res.data);
+				console.log("response", response);
+				if (response.code === 200) {
+					successCallback(response);
+				} else {
+					
+					failCallback(new Error(response.message || '分析失败'));
+				}
+			} catch (parseError) {
+				failCallback(new Error('解析响应数据失败'));
+			}
+		},
+		fail: (error) => {
+			failCallback(error);
+		}
+	});
+}
+
 export {
 	updateNameAndImg,
 	streamDy,
@@ -497,4 +562,5 @@ export {
 	guide,
 	cardCodeChange,
 	number,
+	uploadEmotionAudio,
 }

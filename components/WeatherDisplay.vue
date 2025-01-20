@@ -44,6 +44,13 @@ import RainbowWeather from './Weather/Rainbow.vue'
 import WindyWeather from './Weather/Windy.vue'
 import DefaultWeather from './Weather/DefaultWeather.vue'
 
+// 定义默认音频数组
+const defaultAudioUrls = [
+  'https://maiya-prod.oss-cn-shanghai.aliyuncs.com/audio/286434.mp3',
+  'https://maiya-prod.oss-cn-shanghai.aliyuncs.com/audio/121041.mp3',
+  'https://maiya-prod.oss-cn-shanghai.aliyuncs.com/audio/default.mp3',
+]
+
 export default {
   name: 'WeatherDisplay',
   
@@ -71,8 +78,8 @@ export default {
       audioContext: null,
       audioUrls: {
         Storm: 'https://maiya-prod.oss-cn-shanghai.aliyuncs.com/audio/storm.mp3',
-        Sunny: 'https://maiya-prod.oss-cn-shanghai.aliyuncs.com/audio/sunny.mp3',
-        Cloudy: 'https://maiya-prod.oss-cn-shanghai.aliyuncs.com/audio/cloudy.mp3',
+        // Sunny: 'https://maiya-prod.oss-cn-shanghai.aliyuncs.com/audio/sunny.mp3',
+        // Cloudy: 'https://maiya-prod.oss-cn-shanghai.aliyuncs.com/audio/cloudy.mp3',
         // ... 其他天气的音频URL
       },
       isPageVisible: true // 添加页面可见性状态
@@ -165,26 +172,31 @@ export default {
       this.stopAndDestroyAudio();
     },
 
+    // 获取随机默认音频
+    getRandomDefaultAudio() {
+      const randomIndex = Math.floor(Math.random() * defaultAudioUrls.length)
+      return defaultAudioUrls[randomIndex]
+    },
+
     initAudio(weatherType) {
-      console.log('=== 初始化音频 ===');
-      console.log('天气类型:', weatherType);
-      console.log('静音状态:', this.isMuted);
-      console.log('页面可见性:', this.isPageVisible);
-
+      console.log('=== 初始化音频 ===')
+      
       // 先清理现有音频
-      this.stopAndDestroyAudio();
+      this.stopAndDestroyAudio()
 
-      const audioUrl = this.audioUrls[weatherType];
-      if (!audioUrl) {
-        console.log('未找到对应的音频URL');
-        return;
-      }
-
+      const audioUrl = this.audioUrls[weatherType] || this.getRandomDefaultAudio()
+      
       try {
         // 创建新的音频实例
-        this.audioContext = uni.createInnerAudioContext();
-        this.audioContext.src = audioUrl;
-        this.audioContext.loop = true;
+        this.audioContext = uni.createInnerAudioContext()
+        // 开启音频缓存
+        this.audioContext.autoCache = true
+        // 设置缓存时长（单位：秒）
+        this.audioContext.cacheTime = 600
+        this.audioContext.src = audioUrl
+        this.audioContext.loop = true
+        // 设置音量，范围 0-1，1 为最大音量
+        this.audioContext.volume = 0.3  // 设置为系统音量的 30%
 
         // 添加音频状态监听
         this.audioContext.onPlay(() => {
@@ -196,8 +208,12 @@ export default {
         });
 
         this.audioContext.onError((res) => {
-          console.error('音频播放错误:', res);
-        });
+          console.error('音频播放错误:', res)
+        })
+
+        this.audioContext.onCanplay(() => {
+          console.log('音频已加载完成，可以播放')
+        })
 
         // 只有在页面可见且非静音状态下才播放
         if (!this.isMuted && this.isPageVisible) {
@@ -205,7 +221,7 @@ export default {
           this.audioContext.play();
         }
       } catch (error) {
-        console.error('初始化音频实例出错:', error);
+        console.error('初始化音频实例出错:', error)
       }
     },
 

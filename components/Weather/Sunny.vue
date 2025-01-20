@@ -1,13 +1,34 @@
 <!-- components/Weather/Sunny.vue -->
 <template>
     <view class="sunny-container">
-      <image src="@/assets/weather/sunny.png" class="weather-image" />
+      <image 
+        :src="imageUrl" 
+        class="weather-image"
+        :cache="true"
+        @error="handleImageError"
+      />
     </view>
   </template>
   
   <script>
   export default {
-    // 空间配置或方法
+    data() {
+      return {
+        imageUrl: '',
+        cdnUrl: 'https://maiya-prod.oss-cn-shanghai.aliyuncs.com/image/weather/sunny.jpg',
+        localUrl: '@/static/weather/sunny.jpg'  // 本地备份
+      }
+    },
+    created() {
+      // 优先使用 CDN
+      this.imageUrl = this.cdnUrl;
+    },
+    methods: {
+      handleImageError() {
+        // CDN 加载失败时使用本地图片
+        this.imageUrl = this.localUrl;
+      }
+    }
   }
   </script>
   

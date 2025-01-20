@@ -40,7 +40,7 @@
       </view>
 
       <!-- 鼓励语句 -->
-      <view class="encouragement">
+      <view class="encouragement" :class="{ 'no-bubbles': emotions.length === 0 }">
         <text>{{ encouragementText }}</text>
       </view>
 
@@ -64,7 +64,7 @@
       </view>
 
       <!-- 录音按钮区域 -->
-      <view class="record-section">
+      <view class="record-section" :class="{ 'no-bubbles': emotions.length === 0 }">
         <!-- 提示文字 -->
         <text class="record-tip" :class="{ 'recording': isRecording }">
           {{ isRecording ? '正在录音...' : '长按开始吐槽' }}
@@ -90,6 +90,7 @@
 
 <script>
 import WeatherDisplay from '@/components/WeatherDisplay.vue'
+import { uploadEmotionAudio } from '@/common/js/http.js'
 const recorderManager = uni.getRecorderManager();
 const app = getApp();
 
@@ -230,72 +231,28 @@ export default {
       recorderManager.onStop(async (res) => {
         const { tempFilePath } = res;
         try {
-          const uploadResult = await uni.uploadFile({
-            url: `${this.$baseUrl}/emotion/analyze`,
-            filePath: tempFilePath,
-            name: 'file',
-            formData: {
-              is_public: true
+          uploadEmotionAudio(
+            tempFilePath,
+            (response) => {
+              // 成功处理
+              this.stResult = response.data.text;
+              this.processEmotions(response.data.emotion.percentage);
+              this.encouragementText = response.data.emotion.encourage;
+              this.updateWeatherType(response.data.emotion.weather || 'Cloudy');
+              this.saveLastEmotion();
             },
-            header: {
-              'content-type': 'multipart/form-data',
-              'Authorization': uni.getStorageSync('token')
+            (error) => {
+              // 错误处理
+              uni.showToast({
+                title: error.message || '上传失败',
+                icon: 'none'
+              });
             }
-          });
-          
-          let response;
-          // 测试数据
-          // 测试数据模拟响应
-          const mockResponse = {
-            data: JSON.stringify({
-              "code": 200,
-              "message": "情感分析成功", 
-              "data": {
-                "emotion": {
-                  "percentage": {
-                    "失望": 40,
-                    "愤怒": 60
-                  },
-                  "reason": "老板",
-                  "weather": "Storm"
-                },
-                "is_public": true,
-                "text": "今天被老板骂了，哎"
-              }
-            })
-          };
-          // 使用模拟数据替换真实响应
-          Object.assign(uploadResult, mockResponse);
-          try {
-            response = JSON.parse(uploadResult.data);
-            console.log('服务器返回的天气类型:', response.data.emotion.weather);
-          } catch (parseError) {
-            console.error('解析响应数据失败:', parseError);
-            uni.showToast({
-              title: '糟糕,遇到问题了',
-              icon: 'none'
-            });
-            return;
-          }
-          
-          if (response.code === 200) {
-            this.stResult = response.data.text;
-            this.processEmotions(response.data.emotion.percentage);
-            this.updateEncouragement(response.data.emotion.percentage);
-            console.log('准备更新天气为:', response.data.emotion.weather);
-            await this.updateWeatherType(response.data.emotion.weather || 'Cloudy');
-            
-            // 保存最新状态
-            this.saveLastEmotion();
-            
-            // 如果需要，天气组件会自动根据 weatherType 更新
-          } else {
-            throw new Error(response.message || '分析失败');
-          }
+          );
         } catch (error) {
-          console.error('上传或处理失败:', error);
+          console.error('处理失败:', error);
           uni.showToast({
-            title: error.message || '上传失败',
+            title: '处理失败',
             icon: 'none'
           });
         }
@@ -316,11 +273,12 @@ export default {
     startRecord() {
       this.isRecording = true;
       recorderManager.start({
-        duration: 60000,
-        sampleRate: 44100,
-        numberOfChannels: 1,
-        encodeBitRate: 192000,
-        format: 'mp3'
+        duration: 60000,  // 最长录音时长，单位ms
+        sampleRate: 16000,  // 采样率，降低采样率可以减小文件体积
+        numberOfChannels: 1,  // 录音通道数，单声道体积更小
+        encodeBitRate: 48000,  // 编码码率，可以适当降低
+        format: 'mp3',  // 音频格式，mp3 压缩率高
+        frameSize: 4  // 指定帧大小
       });
     },
 
@@ -383,36 +341,6 @@ export default {
 
       // 处理完情绪数据后保存到本地存储
       this.saveLastEmotion();
-    },
-
-    updateEncouragement(percentages) {
-      const encouragements = {
-        negative: [
-          '记住，每个困难都是暂时的，明天会更好！',
-          '让我们一起面对，你并不孤单。',
-          '生活中总会有起起落落，这很正常。'
-        ],
-        positive: [
-          '太棒了！保持这份好心情！',
-          '你的积极态度真是太棒了！',
-          '继续保持，你做得很好！'
-        ]
-      };
-
-      // 定义消极情绪列表
-      const negativeEmotions = [
-        '悲伤', '愤怒', '恐惧', '厌恶', '焦虑', 
-        '失望', '嫉妒', '羞愧', '内疚', '孤独'
-      ];
-      
-      // 计算消极情绪的总百分比
-      const negativePercentage = Object.entries(percentages)
-        .filter(([emotion]) => negativeEmotions.includes(emotion))
-        .reduce((sum, [_, value]) => sum + value, 0);
-      
-      // 如果消极情绪超过50%，则选择安慰性的语句
-      const list = negativePercentage > 50 ? encouragements.negative : encouragements.positive;
-      this.encouragementText = list[Math.floor(Math.random() * list.length)];
     },
 
     // 计算气泡大小的方法
@@ -647,13 +575,17 @@ export default {
 .encouragement {
   margin: 40rpx 0;
   padding: 30rpx;
-  background: rgba(255, 255, 255, 0.1);  // 半透明背景
-  backdrop-filter: blur(10px);  // 毛玻璃效果
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
   border-radius: 20rpx;
   text-align: center;
   border: 1px solid rgba(255, 255, 255, 0.1);
   position: relative;
   z-index: 1;
+  
+  &.no-bubbles {
+    margin-bottom: 200rpx; // 当没有气泡时，增加底部间距
+  }
   
   text {
     font-size: 36rpx;
@@ -725,13 +657,17 @@ export default {
 
 .record-section {
   position: fixed;
-  z-index: 2; // 录音按钮保持在最上层
   bottom: 100rpx;
   left: 0;
   right: 0;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
+  
+  &.no-bubbles {
+    bottom: 160rpx; // 当没有气泡时，调整按钮位置
+  }
 }
 
 .record-tip {
