@@ -40,48 +40,89 @@
       </view>
 
       <!-- 鼓励语句 -->
-      <view class="encouragement" :class="{ 'no-bubbles': emotions.length === 0 }">
-        <text>{{ encouragementText }}</text>
+      <view 
+        class="encouragement" 
+        :class="{ 'no-bubbles': emotions.length === 0 }"
+        @tap="handleEncouragementTap"
+      >
+        <view 
+          v-for="(sentence, index) in displaySentences" 
+          :key="index"
+          class="sentence"
+          :style="{ 
+            opacity: sentence.visible ? 1 : 0,
+            transform: sentence.visible ? 'translateY(0)' : 'translateY(10rpx)'
+          }"
+        >
+          {{ sentence.text }}
+        </view>
+        <text v-if="isTyping" class="cursor">|</text>
       </view>
 
       <!-- 情绪气泡图 -->
-      <view class="emotion-bubbles" v-if="emotions.length > 0">
-        <view 
-          v-for="(emotion, index) in emotions" 
-          :key="index"
-          class="bubble"
-          :style="{
-            width: calculateBubbleSize(emotion.percentage) + 'rpx',
-            height: calculateBubbleSize(emotion.percentage) + 'rpx',
-            backgroundColor: emotion.color,
-            transform: `translate(${emotion.offsetX}rpx, ${emotion.offsetY}rpx)`,
-            position: 'absolute'
-          }"
-        >
-          <text class="emotion-label">{{emotion.name}}</text>
-          <text class="emotion-value">{{emotion.percentage}}%</text>
+      <view class="emotion-bubbles-container" v-if="emotions.length > 0">
+        <view class="emotion-bubbles">
+          <view 
+            v-for="(emotion, index) in emotions" 
+            :key="index"
+            class="bubble"
+            :style="{
+              width: calculateBubbleSize(emotion.percentage) + 'rpx',
+              height: calculateBubbleSize(emotion.percentage) + 'rpx',
+              backgroundColor: emotion.color,
+              transform: `translate(${emotion.offsetX}rpx, ${emotion.offsetY}rpx)`,
+              position: 'absolute'
+            }"
+          >
+            <text class="emotion-label">{{emotion.name}}</text>
+            <text class="emotion-value">{{emotion.percentage}}%</text>
+          </view>
         </view>
       </view>
 
-      <!-- 录音按钮区域 -->
-      <view class="record-section" :class="{ 'no-bubbles': emotions.length === 0 }">
-        <!-- 提示文字 -->
-        <text class="record-tip" :class="{ 'recording': isRecording }">
-          {{ isRecording ? '正在录音...' : '长按开始吐槽' }}
-        </text>
-        
-        <!-- 录音按钮 -->
+      <!-- 输入区域 -->
+      <view class="input-section" :class="{ 'no-bubbles': emotions.length === 0 }">
+        <!-- 切换按钮 -->
         <view 
-          class="record-container"
-          @touchstart="startRecord"
-          @touchend="stopRecord"
+          class="switch-input-mode" 
+          @tap="switchInputMode"
+          :class="{ 'disabled': !canInteract }"
         >
-          <view class="wave-container" :class="{ 'recording': isRecording }">
-            <view class="wave wave1"></view>
-            <view class="wave wave2"></view>
-            <view class="wave wave3"></view>
+          <text class="iconfont" :class="isVoiceMode ? 'icon-keyboard' : 'icon-mic'"></text>
+        </view>
+        
+        <!-- 文字输入框 -->
+        <view v-if="!isVoiceMode" class="text-input-area">
+          <input 
+            type="text" 
+            v-model="inputText"
+            placeholder="输入你想说的话..."
+            @confirm="handleTextSubmit"
+            :disabled="!canInteract"
+          />
+          <view 
+            class="submit-btn" 
+            @tap="handleTextSubmit"
+            :class="{
+              'submit-btn--disabled': !canInteract || !inputText.trim(),
+              'submit-btn--active': canInteract && inputText.trim()
+            }"
+          >
+            <text class="iconfont icon-send"></text>
           </view>
-          <text class="icon-mic"></text>
+        </view>
+        
+        <!-- 语音输入按钮 -->
+        <view v-else class="voice-input-area">
+          <view 
+            class="record-btn"
+            @touchstart="startRecord"
+            @touchend="stopRecord"
+            @touchcancel="stopRecord"
+            :class="{ 'disabled': !canInteract }"
+          >
+            <text>{{ isRecording ? '松开结束' : '长按开始吐槽' }}</text>
+          </view>
         </view>
       </view>
     </view>
@@ -109,6 +150,17 @@ export default {
       encouragementText: '每一天都是新的开始，分享你的心情吧！',
       audioContext: null,
       isMuted: false,
+      isVoiceMode: true, // 默认语音模式
+      inputText: '', // 文字输入内容
+      displaySentences: [], // 存储分句后的文本
+      isTyping: false,
+      typingTimer: null,
+      currentSentenceIndex: 0,
+      isLoading: false,
+      isSubmitting: false,
+      isRendering: false, // 添加渲染状态锁
+      submitTimeout: null,
+      defaultEncouragement: '每一天都是新的开始，分享你的心情吧！'
     }
   },
 
@@ -121,6 +173,9 @@ export default {
       const isStorm = this.weatherType?.toLowerCase() === 'storm';
       console.log('是否为暴风天气:', isStorm);
       return isStorm;
+    },
+    canInteract() {
+      return !this.isLoading && !this.isSubmitting && !this.isRendering;
     }
   },
 
@@ -142,6 +197,9 @@ export default {
 
     // 获取缓存的情绪数据
     this.loadLastEmotion();
+
+    // 初始化时显示默认鼓励语
+    this.startTyping(this.defaultEncouragement);
   },
 
   mounted() {
@@ -231,18 +289,18 @@ export default {
       recorderManager.onStop(async (res) => {
         const { tempFilePath } = res;
         try {
-          uploadEmotionAudio(
+          await uploadEmotionAudio(
             tempFilePath,
             (response) => {
-              // 成功处理
               this.stResult = response.data.text;
-              this.processEmotions(response.data.emotion.percentage);
-              this.encouragementText = response.data.emotion.encourage;
+              this.processEmotions(response);
+              const encouragementText = response.data.emotion.encourage || this.defaultEncouragement;
+              this.encouragementText = encouragementText;
               this.updateWeatherType(response.data.emotion.weather || 'Cloudy');
               this.saveLastEmotion();
+              this.startTyping(encouragementText);
             },
             (error) => {
-              // 错误处理
               uni.showToast({
                 title: error.message || '上传失败',
                 icon: 'none'
@@ -255,6 +313,8 @@ export default {
             title: '处理失败',
             icon: 'none'
           });
+        } finally {
+          this.isLoading = false; // 结束加载
         }
       });
 
@@ -271,40 +331,76 @@ export default {
 
     // 开始录音
     startRecord() {
+      if (this.isLoading) return;
+      
       this.isRecording = true;
       recorderManager.start({
-        duration: 60000,  // 最长录音时长，单位ms
-        sampleRate: 16000,  // 采样率，降低采样率可以减小文件体积
-        numberOfChannels: 1,  // 录音通道数，单声道体积更小
-        encodeBitRate: 48000,  // 编码码率，可以适当降低
-        format: 'mp3',  // 音频格式，mp3 压缩率高
-        frameSize: 4  // 指定帧大小
+        duration: 60000,
+        sampleRate: 16000,
+        numberOfChannels: 1,
+        encodeBitRate: 48000,
+        format: 'mp3',
+        frameSize: 4
       });
     },
 
     // 停止录音
     stopRecord() {
+      if (!this.isRecording) return;
+      
       this.isRecording = false;
+      this.isLoading = true;
+      
+      // 设置5秒超时
+      this.submitTimeout = setTimeout(() => {
+        if (this.isLoading) {
+          this.isLoading = false;
+          uni.showToast({
+            title: '请求超时，请重试',
+            icon: 'none'
+          });
+        }
+      }, 5000);
+      
       recorderManager.stop();
     },
 
-    // 生成随机偏移量，但确保气泡不会重叠太多
     generateRandomOffset(bubbleSize, index, totalBubbles) {
-      // 定义中心区域范围
-      const centerZoneWidth = 400;  // 可调整的区域宽度
-      const centerZoneHeight = 400; // 可调整的区域高度
+      const containerRadius = 250; // 容器半径
+      const minDistance = 60;  // 最小气泡间距
       
-      // 生成基于角度的随机位置
-      const angle = (index / totalBubbles) * 2 * Math.PI + Math.random() * 0.5;
-      const radius = Math.random() * (centerZoneWidth / 4) + bubbleSize / 2;
+      // 使用黄金角度来创建螺旋分布
+      const goldenAngle = Math.PI * (3 - Math.sqrt(5)); // 约137.5度
+      const angle = index * goldenAngle;
+
+      // 根据索引动态计算半径，使气泡螺旋分布
+      let radius = Math.sqrt(index / totalBubbles) * containerRadius;
+      
+      // 确保半径不会太小，避免气泡靠得太近
+      radius = Math.max(radius, minDistance);
+
+      // 添加一些随机性，但范围要小
+      const randomRadius = radius + (Math.random() - 0.5) * minDistance;
       
       return {
-        x: Math.cos(angle) * radius,
-        y: Math.sin(angle) * radius
+        x: Math.cos(angle) * randomRadius,
+        y: Math.sin(angle) * randomRadius
       };
     },
 
-    processEmotions(percentages) {
+    calculateBubbleSize(percentage) {
+      // 根据百分比的大小范围调整气泡尺寸
+      const minSize = 80;  // 最小气泡尺寸
+      const maxSize = 140; // 最大气泡尺寸
+      
+      // 使用非线性映射使差异更明显
+      const normalizedSize = Math.pow(percentage / 100, 0.7); // 使用幂函数调整大小差异
+      return minSize + normalizedSize * (maxSize - minSize);
+    },
+
+    processEmotions(responseData) {
+      // 处理情绪数据
+      const percentages = responseData.data.emotion.percentage;
       const colorMap = {
         '悲伤': '#7BB9F7',
         '愤怒': '#FF6B6B',
@@ -312,10 +408,12 @@ export default {
         '开心': '#FFD93D',
         '失望': '#A78BFA',
         '焦虑': '#F59E0B',
-        '恐惧': '#7C3AED'
+        '恐惧': '#7C3AED',
+        '淡定': '#95D475'
       };
-      
-      const emotionsArray = Object.entries(percentages)
+
+      // 先计算所有气泡的位置和大小
+      let emotionsArray = Object.entries(percentages)
         .map(([name, value]) => ({
           name,
           percentage: value,
@@ -323,31 +421,75 @@ export default {
         }))
         .sort((a, b) => b.percentage - a.percentage);
 
-      // 为每个气泡添加随机位置
-      this.emotions = emotionsArray.map((emotion, index) => {
+      // 第一次布局
+      let positions = emotionsArray.map((emotion, index) => {
         const bubbleSize = this.calculateBubbleSize(emotion.percentage);
         const offset = this.generateRandomOffset(
-          bubbleSize, 
-          index, 
+          bubbleSize,
+          index,
           emotionsArray.length
         );
-        
-        return {
-          ...emotion,
-          offsetX: offset.x,
-          offsetY: offset.y
-        };
+        return { ...emotion, bubbleSize, offsetX: offset.x, offsetY: offset.y };
       });
 
-      // 处理完情绪数据后保存到本地存储
-      this.saveLastEmotion();
-    },
+      // 检测和调整重叠
+      for (let i = 0; i < 5; i++) { // 最多尝试5次调整
+        let hasOverlap = false;
+        for (let j = 0; j < positions.length; j++) {
+          for (let k = j + 1; k < positions.length; k++) {
+            const bubble1 = positions[j];
+            const bubble2 = positions[k];
+            
+            // 计算两个气泡中心点之间的距离
+            const dx = bubble1.offsetX - bubble2.offsetX;
+            const dy = bubble1.offsetY - bubble2.offsetY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // 计算需要的最小距离（两个气泡半径之和）
+            const minDistance = (bubble1.bubbleSize + bubble2.bubbleSize) / 2;
+            
+            // 如果重叠，调整位置
+            if (distance < minDistance) {
+              hasOverlap = true;
+              const angle = Math.atan2(dy, dx);
+              const overlap = minDistance - distance;
+              
+              // 将气泡稍微推开
+              const push = overlap / 2;
+              positions[j].offsetX += Math.cos(angle) * push;
+              positions[j].offsetY += Math.sin(angle) * push;
+              positions[k].offsetX -= Math.cos(angle) * push;
+              positions[k].offsetY -= Math.sin(angle) * push;
+            }
+          }
+        }
+        if (!hasOverlap) break;
+      }
 
-    // 计算气泡大小的方法
-    calculateBubbleSize(percentage) {
-      const minSize = 160;
-      const maxSize = 300;
-      return minSize + (percentage / 100) * (maxSize - minSize);
+      // 计算所有气泡的中心点
+      let centerX = 0;
+      let centerY = 0;
+      positions.forEach(bubble => {
+        centerX += bubble.offsetX;
+        centerY += bubble.offsetY;
+      });
+      centerX /= positions.length;
+      centerY /= positions.length;
+
+      // 将整体布局移动到容器中心
+      const offsetX = -centerX;
+      const offsetY = -centerY;
+      positions.forEach(bubble => {
+        bubble.offsetX += offsetX;
+        bubble.offsetY += offsetY;
+      });
+
+      this.emotions = positions;
+
+      // 当获取到新的鼓励语时，启动打字效果
+      if (responseData.data.emotion.encourage) {
+        this.startTyping(responseData.data.emotion.encourage);
+      }
     },
 
     // 保存最后的情绪状态到本地存储
@@ -416,6 +558,173 @@ export default {
         console.error('保存静音状态失败:', e);
       }
     },
+
+    // 切换输入模式
+    switchInputMode() {
+      if (this.isLoading) return;
+      this.isVoiceMode = !this.isVoiceMode;
+    },
+    
+    // 处理文字提交
+    async handleTextSubmit() {
+      // 严格检查所有状态
+      if (!this.inputText.trim() || !this.canInteract) {
+        console.log('提交被阻止：', {
+          isLoading: this.isLoading,
+          isSubmitting: this.isSubmitting,
+          isRendering: this.isRendering
+        });
+        return;
+      }
+      
+      // 立即锁定所有状态
+      this.isSubmitting = true;
+      this.isLoading = true;
+      const currentText = this.inputText;
+      
+      // 设置超时保护
+      this.submitTimeout = setTimeout(() => {
+        this.resetAllStates();
+        uni.showToast({
+          title: '请求超时，请重试',
+          icon: 'none'
+        });
+      }, 5000);
+      
+      try {
+        await new Promise((resolve, reject) => {
+          uploadEmotionAudio(
+            null,
+            async (response) => {
+              try {
+                // 开始渲染过程
+                this.isRendering = true;
+                
+                // 清除超时定时器
+                if (this.submitTimeout) {
+                  clearTimeout(this.submitTimeout);
+                  this.submitTimeout = null;
+                }
+                
+                // 清空输入
+                if (this.inputText === currentText) {
+                  this.inputText = '';
+                }
+                
+                // 处理响应数据
+                this.stResult = response.data.text;
+                await this.processEmotions(response);
+                
+                // 使用响应中的鼓励语，如果没有则使用默认值
+                const encouragementText = response.data.emotion.encourage || this.defaultEncouragement;
+                this.startTyping(encouragementText);
+                
+                this.updateWeatherType(response.data.emotion.weather || 'Cloudy');
+                await this.saveLastEmotion();
+                
+                resolve();
+              } catch (error) {
+                reject(error);
+              }
+            },
+            (error) => {
+              reject(error);
+            },
+            { text: currentText }
+          );
+        });
+      } catch (error) {
+        console.error('处理失败:', error);
+        uni.showToast({
+          title: error.message || '处理失败',
+          icon: 'none'
+        });
+      } finally {
+        // 等待一小段时间确保渲染完成
+        setTimeout(() => {
+          this.resetAllStates();
+        }, 500);
+      }
+    },
+
+    // 重置所有状态
+    resetAllStates() {
+      this.isLoading = false;
+      this.isSubmitting = false;
+      this.isRendering = false;
+      if (this.submitTimeout) {
+        clearTimeout(this.submitTimeout);
+        this.submitTimeout = null;
+      }
+    },
+
+    // 将文本按标点符号分句，并去掉每句末尾的标点
+    splitIntoSentences(text) {
+      // 按照中文标点符号分割文本
+      return text
+        .split(/[，。！？；]/g)
+        .map(sentence => sentence.trim()) // 去除空白字符
+        .filter(sentence => sentence.length > 0) // 过滤空字符串
+        .map(sentence => ({
+          text: sentence,  // 不再添加标点符号
+          visible: false
+        }));
+    },
+
+    // 开始打字效果
+    startTyping(text, callback) {
+      this.stopTyping();
+      this.displaySentences = this.splitIntoSentences(text);
+      this.isTyping = true;
+      this.currentSentenceIndex = 0;
+      
+      const showNextSentence = () => {
+        if (this.currentSentenceIndex < this.displaySentences.length) {
+          // 显示当前句子
+          this.$set(
+            this.displaySentences[this.currentSentenceIndex], 
+            'visible', 
+            true
+          );
+          
+          // 设置下一句的延时
+          this.currentSentenceIndex++;
+          if (this.currentSentenceIndex < this.displaySentences.length) {
+            this.typingTimer = setTimeout(showNextSentence, 800); // 每句之间的延迟
+          } else {
+            this.isTyping = false;
+            if (callback) callback();
+          }
+        }
+      };
+      
+      showNextSentence();
+    },
+
+    // 停止打字效果
+    stopTyping() {
+      if (this.typingTimer) {
+        clearTimeout(this.typingTimer);
+        this.typingTimer = null;
+      }
+      this.isTyping = false;
+    },
+
+    // 处理点击事件 - 立即显示所有文本
+    handleEncouragementTap() {
+      if (this.isTyping) {
+        this.stopTyping();
+        this.displaySentences.forEach(sentence => {
+          sentence.visible = true;
+        });
+        this.isTyping = false;
+      }
+    }
+  },
+
+  // 组件销毁时清理
+  beforeDestroy() {
+    this.resetAllStates();
   }
 }
 </script>
@@ -573,70 +882,162 @@ export default {
 }
 
 .encouragement {
-  margin: 40rpx 0;
-  padding: 30rpx;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border-radius: 20rpx;
+  margin: 40rpx 30rpx;
+  padding: 40rpx;
+  // 使用更温暖的渐变背景
+  background: linear-gradient(
+    135deg, 
+    rgba(147, 197, 253, 0.15),  // 柔和的蓝色
+    rgba(196, 181, 253, 0.08)   // 淡紫色
+  );
+  backdrop-filter: blur(12px);
+  border-radius: 24rpx;
   text-align: center;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  // 更柔和的边框
+  border: 1px solid rgba(147, 197, 253, 0.15);
   position: relative;
   z-index: 1;
+  // 更柔和的阴影
+  box-shadow: 0 8rpx 32rpx rgba(59, 130, 246, 0.08);
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(
+      circle at center,
+      rgba(147, 197, 253, 0.12) 0%,  // 柔和的蓝色光晕
+      rgba(196, 181, 253, 0.08) 30%, // 淡紫色过渡
+      transparent 70%
+    );
+    opacity: 0.6;
+    z-index: -1;
+    pointer-events: none;
+    animation: rotate 15s linear infinite;
+  }
   
   &.no-bubbles {
-    margin-bottom: 200rpx; // 当没有气泡时，增加底部间距
+    margin-bottom: 200rpx;
   }
   
-  text {
-    font-size: 36rpx;
-    color: #ffffff;
+  .sentence {
+    font-size: 34rpx;
+    // 更温暖的文字颜色
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.98),  // 纯白色起始
+      rgba(228, 228, 231, 0.95)   // 略微灰白色结束
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
     line-height: 1.6;
-    font-weight: 500;
+    margin: 8rpx 0;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0;
+    transform: translateY(10rpx);
+    text-align: center;
+    width: 100%;
+    display: block;
+    // 更柔和的文字阴影
+    text-shadow: 0 2rpx 4rpx rgba(59, 130, 246, 0.08);
+    font-weight: 400;
+    letter-spacing: 1rpx;
+    
+    &:first-child {
+      margin-top: 0;
+    }
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+    
+    &.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
+
+  .cursor {
+    display: inline-block;
+    margin-left: 4rpx;
+    animation: blink 1.2s infinite;
+    font-weight: 200;
+    vertical-align: middle;
+    opacity: 0.8;
+  }
+
+  // 悬浮效果增强
+  &:hover {
+    background: linear-gradient(
+      135deg, 
+      rgba(147, 197, 253, 0.18),
+      rgba(196, 181, 253, 0.1)
+    );
+    
+    &::before {
+      opacity: 0.8;
+    }
+  }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 0; }
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.emotion-bubbles-container {
+  position: relative;
+  width: 100%;
+  height: 600rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 200rpx;
 }
 
 .emotion-bubbles {
   position: relative;
-  width: 100%;
-  height: 600rpx; // 减小容器高度，给底部按钮留出空间
-  margin: 50rpx 0;
+  width: 600rpx;
+  height: 600rpx;
+  margin: 0 auto;
+}
+
+.bubble {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+  border-radius: 50%;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform-origin: center center;
+  transition: all 0.3s ease;
   z-index: 1;
   
-  .bubble {
-    position: absolute;
-    border-radius: 50%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    transition: all 0.5s ease-out;
-    box-shadow: 0 8rpx 16rpx rgba(0, 0, 0, 0.2);
-    backdrop-filter: blur(5px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    
-    &:hover {
-      transform: scale(1.05);
-      z-index: 10;
-      box-shadow: 0 12rpx 24rpx rgba(0, 0, 0, 0.3);
-    }
-    
-    .emotion-label {
-      color: #fff;
-      font-size: 36rpx;
-      font-weight: bold;
-      text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.3);
-      white-space: nowrap;
-    }
-    
-    .emotion-value {
-      color: #fff;
-      font-size: 32rpx;
-      margin-top: 8rpx;
-      opacity: 0.9;
-    }
+  .emotion-label {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 28rpx;
+    font-weight: 500;
+    margin-bottom: 6rpx;
+  }
+  
+  .emotion-value {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 22rpx;
   }
 }
 
@@ -799,4 +1200,132 @@ export default {
 //   height: 100%;
 //   z-index: 1; // 调整层级确保不会遮挡其他内容
 // }
+
+.input-section {
+  position: fixed;
+  bottom: 100rpx;
+  left: 0;
+  right: 0;
+  padding: 0 30rpx;
+  display: flex;
+  align-items: center;
+  z-index: 100;
+  
+  &.no-bubbles {
+    bottom: 160rpx;
+  }
+}
+
+.switch-input-mode {
+  width: 80rpx;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  margin-right: 20rpx;
+  
+  .iconfont {
+    font-size: 40rpx;
+    color: #ffffff;
+  }
+}
+
+.text-input-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 40rpx;
+  padding: 10rpx 20rpx;
+  
+  input {
+    flex: 1;
+    height: 60rpx;
+    color: #ffffff;
+    padding: 0 20rpx;
+  }
+  
+  .submit-btn {
+    width: 80rpx;
+    height: 60rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    
+    .iconfont {
+      font-size: 40rpx;
+      transition: all 0.3s ease;
+    }
+    
+    // 可点击状态
+    &.submit-btn--active {
+      cursor: pointer;
+      
+      .iconfont {
+        color: #4CAF50; // 使用绿色表示可发送
+      }
+      
+      &:active {
+        transform: scale(0.95);
+        
+        .iconfont {
+          color: #45a049; // 点击时的颜色
+        }
+      }
+    }
+    
+    // 禁用状态
+    &.submit-btn--disabled {
+      pointer-events: none;
+      
+      .iconfont {
+        color: rgba(255, 255, 255, 0.3); // 使用半透明灰色表示禁用
+      }
+    }
+  }
+}
+
+.voice-input-area {
+  flex: 1;
+  
+  .record-btn {
+    height: 80rpx;
+    line-height: 80rpx;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 40rpx;
+    color: #ffffff;
+    font-size: 32rpx;
+  }
+}
+
+.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+.switch-input-mode {
+  &.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+}
+
+.submit-btn {
+  &.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+}
+
+.record-btn {
+  &.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+}
 </style>

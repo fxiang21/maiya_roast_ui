@@ -77,7 +77,7 @@ export default {
     return {
       audioContext: null,
       audioUrls: {
-        Storm: 'https://maiya-prod.oss-cn-shanghai.aliyuncs.com/audio/storm.mp3',
+        // Storm: 'https://maiya-prod.oss-cn-shanghai.aliyuncs.com/audio/storm.mp3',
         // Sunny: 'https://maiya-prod.oss-cn-shanghai.aliyuncs.com/audio/sunny.mp3',
         // Cloudy: 'https://maiya-prod.oss-cn-shanghai.aliyuncs.com/audio/cloudy.mp3',
         // ... 其他天气的音频URL

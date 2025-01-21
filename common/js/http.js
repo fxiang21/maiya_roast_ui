@@ -485,68 +485,93 @@ function number(a, b) {
 }
 
 /**
- * 情绪分析上传
- * @param {Object} tempFilePath 录音文件路径
+ * 情感分析上传
+ * @param {Object} tempFilePath 录音文件路径，文字模式时为 null
  * @param {Function} successCallback 成功回调
  * @param {Function} failCallback 失败回调
+ * @param {Object} extraData 额外数据，包含文字内容等
  */
-function uploadEmotionAudio(tempFilePath, successCallback, failCallback) {
+function uploadEmotionAudio(tempFilePath, successCallback, failCallback, extraData = {}) {
 	const app = getApp();
-	uni.uploadFile({
-		url: `${app.globalData.url}/emotion/analysis`,
-		filePath: tempFilePath,
-		name: 'file',
-		formData: {
-			is_public: true
-		},
-		header: {
-			'content-type': 'multipart/form-data',
-			'Authorization': uni.getStorageSync('token')
-		},
-		success: (res) => {
-			try {
-				// 测试数据
-				console.log("res", res);
-				const mockResponse = {
-					data: JSON.stringify({
-						"code": 200,
-						"message": "情感分析成功",
-						"data": {
-							"emotion": {
-								"percentage": {
-									"平静": 40,
-									"悲伤": 30,
-									"愤怒": 30
-								},
-								"category": "工作",
-								"target": "老板",
-								"weather": "Cloudy",
-								"encourage": "别因为一时的批评而气馁，每一次挫折都是成长的阶梯，相信自己，未来一定能绽放光彩。"
-							},
-							"is_public": true,
-							"text": "今天被老板骂了，哎"
-						}
-					})
-				};
-				// 使用模拟数据替换真实响应
-				console.log("res.data", mockResponse.data);
-				Object.assign(res, mockResponse);
-				const response = JSON.parse(res.data);
-				console.log("response", response);
-				if (response.code === 200) {
-					successCallback(response);
-				} else {
-					
-					failCallback(new Error(response.message || '分析失败'));
-				}
-			} catch (parseError) {
-				failCallback(new Error('解析响应数据失败'));
+	const uploadData = {
+		is_public: 'true',
+		...extraData
+	};
+	
+	if (tempFilePath) {
+		// 语音上传
+		uni.uploadFile({
+			url: `${app.globalData.url}/emotion/analysis`,
+			filePath: tempFilePath,
+			name: 'file',
+			formData: {
+				...uploadData,
+				// 添加音频相关参数
+				timestamp: new Date().getTime().toString(),
+				language: 'zh',
+				format: 'mp3',
+				sample_rate: '16000',
+				channels: '1',
+				bit_rate: '48000'
+			},
+			header: {
+				'content-type': 'multipart/form-data',
+				'Authorization': uni.getStorageSync('token')
+			},
+			success: handleResponse,
+			fail: failCallback
+		});
+	} else {
+		// 文字提交
+		uni.request({
+			url: `${app.globalData.url}/emotion/analysis`,
+			method: 'POST',
+			data: uploadData,
+			header: {
+				'content-type': 'application/json',
+				'Authorization': uni.getStorageSync('token')
+			},
+			success: handleResponse,
+			fail: failCallback
+		});
+	}
+	
+	function handleResponse(res) {
+		try {
+			// 检查 res 是否存在
+			if (!res) {
+				throw new Error('响应数据为空');
 			}
-		},
-		fail: (error) => {
-			failCallback(error);
+
+			// 解析响应数据
+			let responseData;
+			if (typeof res.data === 'string') {
+				responseData = JSON.parse(res.data);
+			} else {
+				responseData = res.data;
+			}
+
+			// 检查数据结构
+			if (!responseData || !responseData.data || !responseData.data.emotion) {
+				throw new Error('响应数据格式错误');
+			}
+
+			// 检查状态码
+			if (responseData.code === 200) {
+				// 确保 encourage 字段存在
+				if (responseData.data.emotion.encourage) {
+					successCallback(responseData);
+				} else {
+					throw new Error('缺少鼓励语数据');
+				}
+			} else {
+				throw new Error(responseData.message || '分析失败');
+			}
+		} catch (error) {
+			console.log("parseError", error);
+			failCallback(new Error('解析响应数据失败：' + error.message));
 		}
-	});
+	}
 }
 
 export {
