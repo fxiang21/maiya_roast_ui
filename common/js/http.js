@@ -485,6 +485,62 @@ function number(a, b) {
 }
 
 /**
+ * 简单的字符串哈希函数
+ * @param {string} str 输入字符串
+ * @returns {string} 哈希结果
+ */
+function simpleHash(str) {
+	let hash = 0;
+	for (let i = 0; i < str.length; i++) {
+		const char = str.charCodeAt(i);
+		hash = ((hash << 5) - hash) + char;
+		hash = hash & hash; // Convert to 32-bit integer
+	}
+	return Math.abs(hash).toString(36);
+}
+
+/**
+ * 获取或生成设备唯一标识
+ * @returns {string} 设备唯一标识
+ */
+function getOrGenerateDeviceId() {
+	const DEVICE_ID_KEY = 'device_unique_id';
+	let deviceId = uni.getStorageSync(DEVICE_ID_KEY);
+	
+	if (!deviceId) {
+		// 尝试获取设备信息
+		const systemInfo = uni.getSystemInfoSync();
+		
+		// 组合多个设备特征
+		const deviceFeatures = [
+			systemInfo.brand || '',          // 手机品牌
+			systemInfo.model || '',          // 手机型号
+			systemInfo.system || '',         // 操作系统版本
+			systemInfo.platform || '',       // 客户端平台
+			Date.now().toString(),          // 时间戳
+			Math.random().toString()        // 随机数
+		].join('_');
+		
+		// 生成唯一标识
+		const openId = uni.getStorageSync(getApp().globalData.openIdCacheName);
+		if (openId) {
+			deviceId = openId;
+		} else {
+			// 使用自定义哈希函数生成设备ID
+			const timestamp = Date.now().toString(36);
+			const randomStr = Math.random().toString(36).substring(2, 8);
+			const featuresHash = simpleHash(deviceFeatures);
+			deviceId = `${featuresHash}${timestamp}${randomStr}`.substring(0, 32);
+		}
+		
+		// 持久化存储
+		uni.setStorageSync(DEVICE_ID_KEY, deviceId);
+	}
+	
+	return deviceId;
+}
+
+/**
  * 情感分析上传
  * @param {Object} tempFilePath 录音文件路径，文字模式时为 null
  * @param {Function} successCallback 成功回调
@@ -497,6 +553,12 @@ function uploadEmotionAudio(tempFilePath, successCallback, failCallback, extraDa
 		is_public: 'true',
 		...extraData
 	};
+	
+	// 获取认证信息
+	const token = uni.getStorageSync('token');
+	const authHeader = token ? 
+		{ 'Authorization': token } : 
+		{ 'X-Anonymous-ID': getOrGenerateDeviceId() };
 	
 	if (tempFilePath) {
 		// 语音上传
@@ -516,7 +578,7 @@ function uploadEmotionAudio(tempFilePath, successCallback, failCallback, extraDa
 			},
 			header: {
 				'content-type': 'multipart/form-data',
-				'Authorization': uni.getStorageSync('token')
+				...authHeader
 			},
 			success: handleResponse,
 			fail: failCallback
@@ -529,7 +591,7 @@ function uploadEmotionAudio(tempFilePath, successCallback, failCallback, extraDa
 			data: uploadData,
 			header: {
 				'content-type': 'application/json',
-				'Authorization': uni.getStorageSync('token')
+				...authHeader
 			},
 			success: handleResponse,
 			fail: failCallback
@@ -588,4 +650,5 @@ export {
 	cardCodeChange,
 	number,
 	uploadEmotionAudio,
+	getOrGenerateDeviceId
 }

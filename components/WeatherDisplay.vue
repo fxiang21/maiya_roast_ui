@@ -4,7 +4,7 @@
       <view class="grid-overlay"></view>
       <view class="glow-effect"></view>
     </view>
-    <block v-if="weatherType === 'Storm'">
+    <block v-if="weatherType === 'Storm1'">
       <storm-weather
         :audio-context="audioContext"
         :is-playing="!isMuted"
