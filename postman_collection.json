@@ -1,0 +1,1100 @@
+{
+	"info": {
+		"_postman_id": "b8302f05-ea7f-4247-b94e-b648f26cabd0",
+		"name": "情感分析 API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "532847"
+	},
+	"item": [
+		{
+			"name": "情感分析",
+			"item": [
+				{
+					"name": "获取情感分析历史",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Anonymous-ID",
+								"value": "4ga7vlm66a69tvnelqkoyd",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/history?page=1&page_size=10",
+							"protocol": "http",
+							"host": [
+								"192",
+								"168",
+								"0",
+								"100"
+							],
+							"port": "8001",
+							"path": [
+								"api",
+								"v1",
+								"speech",
+								"emotion",
+								"history"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "page_size",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "获取情感分析历史",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Anonymous-ID",
+										"value": "4ga7vlm66a69tvnelqkoyd",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/history?page=1&page_size=2",
+									"protocol": "http",
+									"host": [
+										"192",
+										"168",
+										"0",
+										"100"
+									],
+									"port": "8001",
+									"path": [
+										"api",
+										"v1",
+										"speech",
+										"emotion",
+										"history"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "page_size",
+											"value": "2"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								},
+								{
+									"key": "Date",
+									"value": "Fri, 07 Feb 2025 00:24:14 GMT"
+								},
+								{
+									"key": "Content-Length",
+									"value": "1004"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"code\": 200,\n    \"message\": \"获取吐槽历史成功\",\n    \"data\": {\n        \"total\": 9,\n        \"page\": 1,\n        \"page_size\": 2,\n        \"total_pages\": 5,\n        \"data\": [\n            {\n                \"id\": \"67a4c423f0680b8b5a2588e3\",\n                \"user_id\": \"000000000000000000000000\",\n                \"anonymous_id\": \"4ga7vlm66a69tvnelqkoyd\",\n                \"original_text\": \"老板又是下班了开会，烦\",\n                \"converted_text\": \"\",\n                \"emotion_result\": {\n                    \"percentage\": {\n                        \"愤怒\": 100\n                    },\n                    \"category\": \"工作\",\n                    \"target\": \"老板下班开会\",\n                    \"weather\": \"Storm\",\n                    \"encourage\": \"\"\n                },\n                \"target_id\": \"000000000000000000000000\",\n                \"created_at\": 1738851363,\n                \"is_public\": true,\n                \"like_count\": 0,\n                \"dislike_count\": 0,\n                \"comment_count\": 0\n            },\n            {\n                \"id\": \"67a46a84dba433101a342441\",\n                \"user_id\": \"000000000000000000000000\",\n                \"anonymous_id\": \"4ga7vlm66a69tvnelqkoyd\",\n                \"original_text\": \"老板又是下班了开会，烦\",\n                \"converted_text\": \"\",\n                \"emotion_result\": {\n                    \"percentage\": {\n                        \"愤怒\": 100\n                    },\n                    \"category\": \"工作\",\n                    \"target\": \"老板下班开会\",\n                    \"weather\": \"Storm\",\n                    \"encourage\": \"\"\n                },\n                \"target_id\": \"000000000000000000000000\",\n                \"created_at\": 1738828420,\n                \"is_public\": true,\n                \"like_count\": 1,\n                \"dislike_count\": 0,\n                \"comment_count\": 0\n            }\n        ]\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "语音情感分析",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Anonymous-ID",
+								"value": "4ga7vlm66a69tvnelqkoyd",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": "/path/to/audio.mp3"
+								}
+							]
+						},
+						"url": {
+							"raw": "http://192.168.0.100:8001/api/v1/emotion/analysis?is_public=true&text=老板又是下班了开会，烦",
+							"protocol": "http",
+							"host": [
+								"192",
+								"168",
+								"0",
+								"100"
+							],
+							"port": "8001",
+							"path": [
+								"api",
+								"v1",
+								"emotion",
+								"analysis"
+							],
+							"query": [
+								{
+									"key": "is_public",
+									"value": "true"
+								},
+								{
+									"key": "text",
+									"value": "老板又是下班了开会，烦"
+								}
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "语音情感分析",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Anonymous-ID",
+										"value": "4ga7vlm66a69tvnelqkoyd",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "file",
+											"type": "file",
+											"src": "/path/to/audio.mp3"
+										}
+									]
+								},
+								"url": {
+									"raw": "http://192.168.0.100:8001/api/v1/emotion/analysis?is_public=true&text=老板又是下班了开会，烦",
+									"protocol": "http",
+									"host": [
+										"192",
+										"168",
+										"0",
+										"100"
+									],
+									"port": "8001",
+									"path": [
+										"api",
+										"v1",
+										"emotion",
+										"analysis"
+									],
+									"query": [
+										{
+											"key": "is_public",
+											"value": "true"
+										},
+										{
+											"key": "text",
+											"value": "老板又是下班了开会，烦"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								},
+								{
+									"key": "Date",
+									"value": "Thu, 06 Feb 2025 07:53:40 GMT"
+								},
+								{
+									"key": "Content-Length",
+									"value": "349"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"code\": 200,\n    \"message\": \"情感分析成功\",\n    \"data\": {\n        \"emotion\": {\n            \"percentage\": {\n                \"愤怒\": 100\n            },\n            \"category\": \"工作\",\n            \"target\": \"老板下班开会\",\n            \"weather\": \"Storm\",\n            \"encourage\": \"加油，暂时的烦恼总会过去，说不定之后工作会越来越顺利，要保持积极的心态面对！\"\n        },\n        \"is_public\": true,\n        \"text\": \"老板又是下班了开会，烦\"\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "获取情感统计",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Anonymous-ID",
+								"value": "4ga7vlm66a69tvnelqkoyd",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/statistics",
+							"protocol": "http",
+							"host": [
+								"192",
+								"168",
+								"0",
+								"100"
+							],
+							"port": "8001",
+							"path": [
+								"api",
+								"v1",
+								"speech",
+								"emotion",
+								"statistics"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "获取情感统计",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Anonymous-ID",
+										"value": "4ga7vlm66a69tvnelqkoyd",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/statistics?period=daily",
+									"protocol": "http",
+									"host": [
+										"192",
+										"168",
+										"0",
+										"100"
+									],
+									"port": "8001",
+									"path": [
+										"api",
+										"v1",
+										"speech",
+										"emotion",
+										"statistics"
+									],
+									"query": [
+										{
+											"key": "period",
+											"value": "daily"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								},
+								{
+									"key": "Date",
+									"value": "Thu, 06 Feb 2025 07:53:54 GMT"
+								},
+								{
+									"key": "Content-Length",
+									"value": "169"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"code\": 200,\n    \"message\": \"获取情感统计数据成功\",\n    \"data\": {\n        \"2025-02-05\": {\n            \"失望\": 20,\n            \"平静\": 40,\n            \"悲伤\": 40,\n            \"愤怒\": 52.5,\n            \"焦虑\": 35\n        },\n        \"2025-02-06\": {\n            \"愤怒\": 100\n        }\n    }\n}"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "互动相关",
+			"item": [
+				{
+					"name": "点赞",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Anonymous-ID",
+								"value": "4ga7vlm66a69tvnelqkoyd",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/like",
+							"protocol": "http",
+							"host": [
+								"192",
+								"168",
+								"0",
+								"100"
+							],
+							"port": "8001",
+							"path": [
+								"api",
+								"v1",
+								"speech",
+								"emotion",
+								"{{emotion_id}}",
+								"like"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "点赞成功",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Anonymous-ID",
+										"value": "4ga7vlm66a69tvnelqkoyd",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/like",
+									"protocol": "http",
+									"host": [
+										"192",
+										"168",
+										"0",
+										"100"
+									],
+									"port": "8001",
+									"path": [
+										"api",
+										"v1",
+										"speech",
+										"emotion",
+										"{{emotion_id}}",
+										"like"
+									]
+								}
+							},
+							"code": 200,
+							"_postman_previewlanguage": "Text",
+							"header": [],
+							"cookie": [],
+							"body": ""
+						}
+					]
+				},
+				{
+					"name": "取消点赞",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-Anonymous-ID",
+								"value": "4ga7vlm66a69tvnelqkoyd",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/like",
+							"protocol": "http",
+							"host": [
+								"192",
+								"168",
+								"0",
+								"100"
+							],
+							"port": "8001",
+							"path": [
+								"api",
+								"v1",
+								"speech",
+								"emotion",
+								"{{emotion_id}}",
+								"like"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "取消点赞成功",
+							"originalRequest": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "X-Anonymous-ID",
+										"value": "4ga7vlm66a69tvnelqkoyd",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/like",
+									"protocol": "http",
+									"host": [
+										"192",
+										"168",
+										"0",
+										"100"
+									],
+									"port": "8001",
+									"path": [
+										"api",
+										"v1",
+										"speech",
+										"emotion",
+										"{{emotion_id}}",
+										"like"
+									]
+								}
+							},
+							"code": 200,
+							"_postman_previewlanguage": "Text",
+							"header": [],
+							"cookie": [],
+							"body": ""
+						}
+					]
+				},
+				{
+					"name": "反对",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Anonymous-ID",
+								"value": "4ga7vlm66a69tvnelqkoyd",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/dislike",
+							"protocol": "http",
+							"host": [
+								"192",
+								"168",
+								"0",
+								"100"
+							],
+							"port": "8001",
+							"path": [
+								"api",
+								"v1",
+								"speech",
+								"emotion",
+								"{{emotion_id}}",
+								"dislike"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "反对成功",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Anonymous-ID",
+										"value": "4ga7vlm66a69tvnelqkoyd",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/dislike",
+									"protocol": "http",
+									"host": [
+										"192",
+										"168",
+										"0",
+										"100"
+									],
+									"port": "8001",
+									"path": [
+										"api",
+										"v1",
+										"speech",
+										"emotion",
+										"{{emotion_id}}",
+										"dislike"
+									]
+								}
+							},
+							"code": 200,
+							"_postman_previewlanguage": "Text",
+							"header": [],
+							"cookie": [],
+							"body": ""
+						}
+					]
+				},
+				{
+					"name": "取消反对",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-Anonymous-ID",
+								"value": "4ga7vlm66a69tvnelqkoyd",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/dislike",
+							"protocol": "http",
+							"host": [
+								"192",
+								"168",
+								"0",
+								"100"
+							],
+							"port": "8001",
+							"path": [
+								"api",
+								"v1",
+								"speech",
+								"emotion",
+								"{{emotion_id}}",
+								"dislike"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "取消反对成功",
+							"originalRequest": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "X-Anonymous-ID",
+										"value": "4ga7vlm66a69tvnelqkoyd",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/dislike",
+									"protocol": "http",
+									"host": [
+										"192",
+										"168",
+										"0",
+										"100"
+									],
+									"port": "8001",
+									"path": [
+										"api",
+										"v1",
+										"speech",
+										"emotion",
+										"{{emotion_id}}",
+										"dislike"
+									]
+								}
+							},
+							"code": 200,
+							"_postman_previewlanguage": "Text",
+							"header": [],
+							"cookie": [],
+							"body": ""
+						}
+					]
+				},
+				{
+					"name": "添加评论",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Anonymous-ID",
+								"value": "4ga7vlm66a69tvnelqkoyd",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"content\": \"加油，事情会变好的\"\n}"
+						},
+						"url": {
+							"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/comment",
+							"protocol": "http",
+							"host": [
+								"192",
+								"168",
+								"0",
+								"100"
+							],
+							"port": "8001",
+							"path": [
+								"api",
+								"v1",
+								"speech",
+								"emotion",
+								"{{emotion_id}}",
+								"comment"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "添加评论成功",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Anonymous-ID",
+										"value": "4ga7vlm66a69tvnelqkoyd",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"content\": \"加油，事情会变好的\"\n}"
+								},
+								"url": {
+									"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/comment",
+									"protocol": "http",
+									"host": [
+										"192",
+										"168",
+										"0",
+										"100"
+									],
+									"port": "8001",
+									"path": [
+										"api",
+										"v1",
+										"speech",
+										"emotion",
+										"{{emotion_id}}",
+										"comment"
+									]
+								}
+							},
+							"code": 200,
+							"_postman_previewlanguage": "Text",
+							"header": [],
+							"cookie": [],
+							"body": ""
+						}
+					]
+				},
+				{
+					"name": "删除评论",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-Anonymous-ID",
+								"value": "4ga7vlm66a69tvnelqkoyd",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/comment/{{comment_id}}",
+							"protocol": "http",
+							"host": [
+								"192",
+								"168",
+								"0",
+								"100"
+							],
+							"port": "8001",
+							"path": [
+								"api",
+								"v1",
+								"speech",
+								"emotion",
+								"{{emotion_id}}",
+								"comment",
+								"{{comment_id}}"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "删除评论成功",
+							"originalRequest": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "X-Anonymous-ID",
+										"value": "4ga7vlm66a69tvnelqkoyd",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/comment/{{comment_id}}",
+									"protocol": "http",
+									"host": [
+										"192",
+										"168",
+										"0",
+										"100"
+									],
+									"port": "8001",
+									"path": [
+										"api",
+										"v1",
+										"speech",
+										"emotion",
+										"{{emotion_id}}",
+										"comment",
+										"{{comment_id}}"
+									]
+								}
+							},
+							"code": 200,
+							"_postman_previewlanguage": "Text",
+							"header": [],
+							"cookie": [],
+							"body": ""
+						}
+					]
+				},
+				{
+					"name": "获取互动列表",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Anonymous-ID",
+								"value": "4ga7vlm66a69tvnelqkoyd",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/interactions?type=comment&page=1&page_size=10",
+							"protocol": "http",
+							"host": [
+								"192",
+								"168",
+								"0",
+								"100"
+							],
+							"port": "8001",
+							"path": [
+								"api",
+								"v1",
+								"speech",
+								"emotion",
+								"{{emotion_id}}",
+								"interactions"
+							],
+							"query": [
+								{
+									"key": "type",
+									"value": "comment",
+									"description": "可选值: like, dislike, comment"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "page_size",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "获取互动列表",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "X-Anonymous-ID",
+										"value": "4ga7vlm66a69tvnelqkoyd",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/interactions?type=comment&page=1&page_size=10",
+									"protocol": "http",
+									"host": [
+										"192",
+										"168",
+										"0",
+										"100"
+									],
+									"port": "8001",
+									"path": [
+										"api",
+										"v1",
+										"speech",
+										"emotion",
+										"{{emotion_id}}",
+										"interactions"
+									],
+									"query": [
+										{
+											"key": "type",
+											"value": "comment",
+											"description": "可选值: like, dislike, comment"
+										},
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "page_size",
+											"value": "10"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								},
+								{
+									"key": "Date",
+									"value": "Fri, 07 Feb 2025 00:23:02 GMT"
+								},
+								{
+									"key": "Transfer-Encoding",
+									"value": "chunked"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"code\": 200,\n    \"message\": \"获取互动列表成功\",\n    \"data\": {\n        \"total\": 8,\n        \"page\": 1,\n        \"page_size\": 10,\n        \"total_pages\": 1,\n        \"data\": [\n            {\n                \"id\": \"67a5525e20d5de93eaafbd74\",\n                \"emotion_id\": \"67a3729614eb32e216e14bd5\",\n                \"user_id\": \"000000000000000000000000\",\n                \"anonymous_id\": \"4ga7vlm66a69tvnelqkoyd\",\n                \"type\": \"comment\",\n                \"content\": \"加油，事情会变好的\",\n                \"created_at\": 1738887774,\n                \"status\": 1\n            },\n            {\n                \"id\": \"67a46198201b6e374df77210\",\n                \"emotion_id\": \"67a3729614eb32e216e14bd5\",\n                \"user_id\": \"000000000000000000000000\",\n                \"anonymous_id\": \"4ga7vlm66a69tvnelqkoyd\",\n                \"type\": \"comment\",\n                \"content\": \"这是一条测试评论017\",\n                \"created_at\": 1738826136,\n                \"status\": 1\n            },\n            {\n                \"id\": \"67a443acefb102f62a3d1d9a\",\n                \"emotion_id\": \"67a3729614eb32e216e14bd5\",\n                \"user_id\": \"000000000000000000000000\",\n                \"anonymous_id\": \"4ga7vlm66a69tvnelqkoyd\",\n                \"type\": \"comment\",\n                \"content\": \"这是一条测试评论1234567\",\n                \"created_at\": 1738818476,\n                \"status\": 1\n            },\n            {\n                \"id\": \"67a442e5efb102f62a3d1d98\",\n                \"emotion_id\": \"67a3729614eb32e216e14bd5\",\n                \"user_id\": \"000000000000000000000000\",\n                \"anonymous_id\": \"4ga7vlm66a69tvnelqkoyd\",\n                \"type\": \"comment\",\n                \"content\": \"这是一条测试评论123456\",\n                \"created_at\": 1738818277,\n                \"status\": 1\n            },\n            {\n                \"id\": \"67a442e4efb102f62a3d1d96\",\n                \"emotion_id\": \"67a3729614eb32e216e14bd5\",\n                \"user_id\": \"000000000000000000000000\",\n                \"anonymous_id\": \"4ga7vlm66a69tvnelqkoyd\",\n                \"type\": \"comment\",\n                \"content\": \"这是一条测试评论123456\",\n                \"created_at\": 1738818276,\n                \"status\": 1\n            },\n            {\n                \"id\": \"67a442e1efb102f62a3d1d94\",\n                \"emotion_id\": \"67a3729614eb32e216e14bd5\",\n                \"user_id\": \"000000000000000000000000\",\n                \"anonymous_id\": \"4ga7vlm66a69tvnelqkoyd\",\n                \"type\": \"comment\",\n                \"content\": \"这是一条测试评论123456\",\n                \"created_at\": 1738818273,\n                \"status\": 1\n            },\n            {\n                \"id\": \"67a42ef5f99c0922d4d58a6d\",\n                \"emotion_id\": \"67a3729614eb32e216e14bd5\",\n                \"user_id\": \"000000000000000000000000\",\n                \"anonymous_id\": \"4ga7vlm66a69tvnelqkoyd\",\n                \"type\": \"comment\",\n                \"content\": \"这是一条测试评论123456\",\n                \"created_at\": 1738813173,\n                \"status\": 1\n            },\n            {\n                \"id\": \"67a428eef99c0922d4d58a6b\",\n                \"emotion_id\": \"67a3729614eb32e216e14bd5\",\n                \"user_id\": \"000000000000000000000000\",\n                \"anonymous_id\": \"4ga7vlm66a69tvnelqkoyd\",\n                \"type\": \"comment\",\n                \"content\": \"这是一条测试评论12345\",\n                \"created_at\": 1738811630,\n                \"status\": 1\n            }\n        ]\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "切换点赞状态",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Anonymous-ID",
+								"value": "4ga7vlm66a69tvnelqkoyd",
+								"type": "text",
+								"description": "匿名用户ID，与 Authorization 二选一"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text",
+								"description": "登录用户token，与 X-Anonymous-ID 二选一"
+							}
+						],
+						"url": {
+							"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/toggle-like",
+							"protocol": "http",
+							"host": ["192", "168", "0", "100"],
+							"port": "8001",
+							"path": [
+								"api",
+								"v1",
+								"speech",
+								"emotion",
+								"{{emotion_id}}",
+								"toggle-like"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "点赞成功",
+							"code": 200,
+							"body": {
+								"code": 200,
+								"message": "点赞成功",
+								"data": {
+									"is_liked": true
+								}
+							}
+						},
+						{
+							"name": "取消点赞成功",
+							"code": 200,
+							"body": {
+								"code": 200,
+								"message": "已取消点赞",
+								"data": {
+									"is_liked": false
+								}
+							}
+						},
+						{
+							"name": "记录不存在",
+							"code": 404,
+							"body": {
+								"code": 404,
+								"message": "情感分析记录不存在"
+							}
+						},
+						{
+							"name": "未提供身份标识",
+							"code": 401,
+							"body": {
+								"code": 401,
+								"message": "需要提供用户身份标识"
+							}
+						}
+					],
+					"description": "切换吐槽的点赞状态，如果之前未点赞则添加点赞，如果已点赞则取消点赞"
+				}
+			]
+		},
+		{
+			"name": "用户认证",
+			"item": [
+				{
+					"name": "发送短信验证码",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"phone\": \"13800138000\"\n}"
+						},
+						"url": {
+							"raw": "http://192.168.0.100:8001/api/v1/auth/sms/code",
+							"protocol": "http",
+							"host": [
+								"192",
+								"168",
+								"0",
+								"100"
+							],
+							"port": "8001",
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"sms",
+								"code"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "手机号登录",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"phone\": \"13800138000\",\n    \"code\": \"123456\"\n}"
+						},
+						"url": {
+							"raw": "http://192.168.0.100:8001/api/v1/auth/phone_login",
+							"protocol": "http",
+							"host": [
+								"192",
+								"168",
+								"0",
+								"100"
+							],
+							"port": "8001",
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"phone_login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "关联匿名用户",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Anonymous-ID",
+								"value": "4ga7vlm66a69tvnelqkoyd",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://192.168.0.100:8001/api/v1/auth/link_anonymous",
+							"protocol": "http",
+							"host": [
+								"192",
+								"168",
+								"0",
+								"100"
+							],
+							"port": "8001",
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"link_anonymous"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "emotion_id",
+			"value": "65c0f3c8e0d6b1f3c8e0d6b2"
+		},
+		{
+			"key": "token",
+			"value": "your_jwt_token_here"
+		},
+		{
+			"key": "comment_id",
+			"value": "65c0f3c8e0d6b1f3c8e0d6b5"
+		},
+		{
+			"key": "X-Anonymous-ID",
+			"value": "q6rf0em6t69brrkopitg",
+			"type": "default"
+		}
+	]
+}

@@ -34,8 +34,8 @@ import * as websocket from '@/common/js/websocket.js'
 	export default {
 		globalData:{
 			isDev: false,
-			url: "http://192.168.0.108:8001/api/v1",
-			chatUrl: "http://192.168.0.108:8001/api/v1",
+			url: "http://192.168.0.100:8001/api/v1",
+			chatUrl: "http://192.168.0.100:8001/api/v1",
 			messageQueueName: 'messages_list_real_maiya',
 			platform: platform,
 			isBlank: function(data) {
