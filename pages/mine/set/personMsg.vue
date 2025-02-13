@@ -6,7 +6,7 @@
     </view>
     <u-form :model="form" ref="uForm" class="form">
       <u-form-item label="昵称" label-width="150">
-        <u-input v-model="form.nickName" placeholder="请输入昵称" />
+        <u-input v-model="form.nickname" placeholder="请输入昵称" />
       </u-form-item>
       <u-form-item label="性别" label-width="150">
         <u-radio-group v-model="form.sex" :active-color="lightColor">
@@ -17,65 +17,69 @@
 
       <u-form-item label="生日" label-width="150" right-icon="arrow-right">
         <div style="width: 100%;" @click="showBirthday = true">{{ birthday || '请选择出生日期' }}</div>
-       <u-picker v-model="showBirthday" mode="time" :confirm-color="lightColor" @confirm="selectTime"></u-picker>
+        <u-picker v-model="showBirthday" mode="date" :confirm-color="lightColor" @confirm="selectTime"></u-picker>
       </u-form-item>
       <u-form-item label="城市" label-width="150" placeholder="请选择城市" right-icon="arrow-right">
         <div style="width: 100%;" @click="clickRegion">{{ form.___path || '请选择城市' }}</div>
       </u-form-item>
-	  
-	  <u-form-item label="手机号" label-width="150">
-		<view v-if="form.mobile">
-			{{form.mobile}}
-		</view>
-		<view v-else>
-			<view class="submit" @click="navigateTo(form.username)">绑定手机号码</view>
-		</view>
-	  </u-form-item>
-    
+      
+      <u-form-item label="手机号" label-width="150">
+        <view v-if="form.mobile">
+          {{ form.mobile }}
+        </view>
+        <view v-else>
+          <view class="submit" @click="navigateTo(form.username)">绑定手机号码</view>
+        </view>
+      </u-form-item>
     </u-form>
     <div class="bottom">
       <view class="submit" @click="submit">保存</view>
-	    <view class="submit light" @click="quiteLoginOut">退出登录</view>
+      <view class="submit light" @click="quiteLoginOut">退出登录</view>
     </div>
     <m-city :provinceData="region" headTitle="区域选择" ref="cityPicker" @funcValue="getPickerParentValue" pickerSize="4"></m-city>
   </view>
 </template>
+
 <script>
 import { saveUserInfo, getUserInfo } from "@/api/members.js";
 import { upload } from "@/api/common.js";
+import { logout } from "@/api/login.js";
 import storage from "@/utils/storage.js";
 import uFormItem from "@/uview-ui/components/u-form-item/u-form-item.vue";
 import city from "@/components/m-city/m-city.vue";
+import { userInfo } from "../../../utils/filters";
+
 export default {
   components: { uFormItem, "m-city": city },
   data() {
+    console.log("userInfo", storage.getUserInfo());
     return {
-      lightColor: this.$lightColor, //高亮颜色
+      lightColor: this.$lightColor, // 高亮颜色
       form: {
-        nickName: storage.getUserInfo().nickName || "",
+        nickname: storage.getUserInfo().nickname || "",
         birthday: storage.getUserInfo().birthday || "",
-        face: storage.getUserInfo().face || "/static/missing-face.png", //默认头像
-        regionId: [], //地址Id
-        region: storage.getUserInfo().region || [], //地址
-        sex: storage.getUserInfo().sex, //性别
-        ___path: storage.getUserInfo().region,
-		mobile: storage.getUserInfo().mobile,
-		username: storage.getUserInfo().username,
+        face: storage.getUserInfo().face || "/static/missing-face.png", // 默认头像
+        regionId: [], // 地址Id
+        region: storage.getUserInfo().region || [], // 地址
+        sex: storage.getUserInfo().sex, // 性别
+        ___path: storage.getUserInfo().region ? storage.getUserInfo().region.join(",") : "",
+        mobile: storage.getUserInfo().mobile,
+        username: storage.getUserInfo().username,
       },
-      birthday: storage.getUserInfo().birthday || "", //生日
+      birthday: storage.getUserInfo().birthday || "", // 生日
       photo: [
         { text: "立即拍照", color: this.$mainColor },
         { text: "从相册选择", color: this.$mainColor },
       ],
       region: [
-        //请求城市默认地址
+        // 请求城市默认地址
         {
           id: "",
           localName: "请选择",
           children: [],
         },
       ],
-      showBirthday: false, //显示生日日期
+      showBirthday: false, // 显示生日日期
     };
   },
   methods: {
@@ -120,13 +124,61 @@ export default {
      */
     submit() {
       delete this.form.___path;
-      let params = JSON.parse(JSON.stringify(this.form));
-      saveUserInfo(params).then((res) => {
-        if (res.statusCode == 200) {
-          storage.setUserInfo(res.data.result);
+      let params = { ...this.form }; // 直接复制对象
+      // 调用保存用户信息的API
+      saveUserInfo(params)
+        .then((user) => {
+          const updatedUser = user;
+          // 映射 user_id 为 id
+          if (updatedUser.user_id && !updatedUser.id) {
+            updatedUser.id = updatedUser.user_id;
+          }
+          storage.setUserInfo(updatedUser); // 更新本地存储
           uni.navigateBack();
-        }
-      });
+        })
+        .catch((error) => {
+          uni.showToast({
+            title: error.message || "保存失败",
+            icon: "none",
+            duration: 2000,
+          });
+        });
+    },
+
+    /**
+     * 退出登录
+     */
+    quiteLoginOut1() {
+      // 调用退出登录的API
+      logout()
+        .then((res) => {
+          if (res.code === 200) { // 根据postman示例，使用res.code判断
+            // 清除本地存储的用户信息和Token
+            storage.clearAll();
+            uni.showToast({
+              title: "退出登录成功",
+              icon: "success",
+              duration: 2000,
+            });
+            // 跳转到登录页面
+            uni.reLaunch({
+              url: '/pages/passport/wechatMPLogin',
+            });
+          } else {
+            uni.showToast({
+              title: res.message || "退出登录失败",
+              icon: "none",
+              duration: 2000,
+            });
+          }
+        })
+        .catch((error) => {
+          uni.showToast({
+            title: error.message || "退出登录失败",
+            icon: "none",
+            duration: 2000,
+          });
+        });
     },
 
     /**
@@ -145,8 +197,27 @@ export default {
             },
             success: (uploadFileRes) => {
               let data = JSON.parse(uploadFileRes.data);
-
-              this.form.face = data.result;
+              if (data.code === 200) {
+                this.form.face = data.data; // 假设后端返回的是图片URL
+                uni.showToast({
+                  title: "头像更新成功",
+                  icon: "success",
+                  duration: 2000,
+                });
+              } else {
+                uni.showToast({
+                  title: data.message || "上传失败",
+                  icon: "none",
+                  duration: 2000,
+                });
+              }
+            },
+            fail: () => {
+              uni.showToast({
+                title: "上传失败",
+                icon: "none",
+                duration: 2000,
+              });
             },
           });
         },
@@ -154,8 +225,34 @@ export default {
     },
 
     /**
-     * 选择地址
+     * 选择地址回调
      */
+    getPickerParentValue(e) {
+      this.form.region = [];
+      this.form.regionId = [];
+      let name = "";
+
+      e.forEach((item, index) => {
+        if (item.id) {
+          this.form.region.push(item.localName);
+          this.form.regionId.push(item.id);
+          if (index == e.length - 1) {
+            name += item.localName;
+          } else {
+            name += item.localName + ",";
+          }
+          this.form.___path = name;
+        }
+      });
+    },
+
+    /**
+     * 点击选择地址
+     */
+    clickRegion() {
+      this.$refs.cityPicker.show();
+    },
+
     selectRegion(region) {
       this.$set(
         this.form,
@@ -163,7 +260,6 @@ export default {
         `${region.province.label} ${region.city.label} ${region.area.label}`
       );
     },
-
     /**
      * 选择时间
      */
@@ -182,14 +278,22 @@ export default {
   /**
    * 加载数据
    */
-  onLoad() {},
+  onShow() {
+    // 更新表单数据
+    const userInfo = storage.getUserInfo();
+    this.form.nickname = userInfo.nickname || "";
+    this.form.birthday = userInfo.birthday || "";
+    this.form.face = userInfo.face || "/static/missing-face.png";
+    this.form.region = userInfo.region || [];
+    this.form.sex = userInfo.sex;
+    this.form.___path = userInfo.region ? userInfo.region.join(",") : "";
+    this.form.mobile = userInfo.mobile || "";
+    this.form.username = userInfo.username || "";
+    this.birthday = userInfo.birthday || "";
+  },
 };
 </script>
-<style>
-page{
-  background: #fff;
-}
-</style>
+
 <style lang="scss" scoped>
 .submit {
   height: 90rpx;
@@ -230,20 +334,19 @@ page{
 .form {
   background-color: #ffffff;
 }
-.bottom{
+.bottom {
   position: fixed;
   bottom: 40px;
   display: flex;
   align-items: center;
   width: 100%;
-  >.submit{
+  > .submit {
     background: $light-color;
     color: #fff;
     width: 40%;
   }
-
 }
-.light{
+.light {
   background: rgba($color: $light-color, $alpha: 0.2) !important;
   color: $light-color !important;
 }

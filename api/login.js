@@ -105,13 +105,29 @@ export function refreshTokenFn(refresh_token) {
   });
 }
 
-// 获取密码状态
-export function logout () {
+/**
+ * 退出登录
+ * @returns {Promise}
+ */
+export function logout() {
   return http.request({
-    url: '/passport/member/logout',
+    url: '/api/v1/auth/logout',
     method: "POST",
     needToken: true,
+    header: {
+      "Content-Type": "application/json",
+    },
   })
+    .then((res) => {
+      if (res.code === 200) {
+        return res.data;
+      } else {
+        return Promise.reject(new Error(res.message || '退出登录失败'));
+      }
+    })
+    .catch((error) => {
+      return Promise.reject(error);
+    });
 }
 
 export function scannerCodeLogin(params){

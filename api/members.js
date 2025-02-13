@@ -299,15 +299,35 @@ export function collectionStore(store_id) {
 
 /**
  * 获取当前登录的用户信息
- * @returns {AxiosPromise}
+ * @returns {Promise}
  */
-export function getUserInfo() {
-	console.log("getUserInfo")
+export function getUserInfo(successCallback, failCallback) {
   return http.request({
-	  url: '/api/user/profile',
+    url: `user/profile`,
     method: Method.GET,
     needToken: true,
-  });
+    header: {
+      'Content-Type': 'application/json',
+    },
+  })
+    .then(res => {
+      if (res.data.code === 200) {
+        let user = res.data.data;
+        // 映射 user_id 为 id
+        if (user.user_id && !user.id) {
+          user.id = user.user_id;
+        }
+        successCallback && successCallback(user);
+        return user;
+      } else {
+        failCallback && failCallback(new Error(res.data.message || '获取用户信息失败'));
+        return Promise.reject(res.data.message || '获取用户信息失败');
+      }
+    })
+    .catch(error => {
+      failCallback && failCallback(new Error('请求失败：' + error.message));
+      return Promise.reject(error);
+    });
 }
 
 /**
@@ -324,17 +344,32 @@ export function getUserWallet() {
 
 /**
  * 保存用户信息
- * @param params
- * @returns {AxiosPromise}
+ * @param {Object} params 用户信息参数
+ * @returns {Promise}
  */
-export function saveUserInfo(params) {
+export function saveUserInfo(params, successCallback, failCallback) {
   return http.request({
-    url: "/passport/member/editOwn",
+    url: `/user/update`,
     method: Method.PUT,
-    header: { "content-type": "application/x-www-form-urlencoded" },
-    needToken: true,
     data: params,
-  });
+    needToken: true, // 确保需要Token
+    header: {
+      "Content-Type": "application/json",
+    },
+  })
+    .then((res) => {
+      if (res.data.code === 200) {
+        successCallback && successCallback(res.data.data);
+        return res.data.data;
+      } else {
+        failCallback && failCallback(new Error(res.message || '保存用户信息失败'));
+        return Promise.reject(res.message || '保存用户信息失败');
+      }
+    })
+    .catch((error) => {
+      failCallback && failCallback(new Error('请求失败：' + error.message));
+      return Promise.reject(error);
+    });
 }
 
 /**

@@ -3,7 +3,7 @@
 		<u-navbar :custom-back="back" title="小程序登录"></u-navbar>
 		<u-modal v-model="phoneAuthPopup" :mask-close-able="true" :title="projectName" :show-confirm-button="false">
 			<div class="tips">
-				为了更好地用户体验，需要您授权手机号1
+				为了更好地用户体验，需要您授权手机号
 			</div>
 			<button class="register" type="primary" open-type="getPhoneNumber" @getphonenumber="getPhoneNumber">
 				去授权
@@ -64,7 +64,7 @@
 				//微信返回信息，用于揭秘信息，获取sessionkey
 				code: "",
 				//微信昵称
-				nickName: "",
+				nickname: "",
 				logingFlag: false,
 				//微信头像
 				image: "",
@@ -132,7 +132,7 @@
 						desc: "用于完善会员资料", // 声明获取用户个人信息后的用途，后续会展示在弹窗中，请谨慎填写
 						success: (res) => {
 							console.log("success", res)
-							this.nickName = res.userInfo.nickName;
+							this.nickname = res.userInfo.nickname;
 							this.image = res.userInfo.avatarUrl;
 
 							/**
@@ -147,29 +147,32 @@
 
 							let code = this.code;
 							let image = this.image;
-							let nickName = this.nickName;
+							let nickname = this.nickname;
 							mpAutoLogin({
 								encryptedData,
 								iv,
 								code,
 								image,
-								nickName,
+								nickname,
 							}).then((apiRes) => {
 								console.log("mpAutoLogin:", apiRes)
 
-								storage.setAccessToken(apiRes.data.result.accessToken);
-								storage.setRefreshToken(apiRes.data.result.refreshToken);
+								storage.setAccessToken(apiRes.data.accessToken);
+								storage.setRefreshToken(apiRes.data.refreshToken);
+								// 假设 storage.setAccessToken 已将 token 存储到 'token' 键中
+								uni.setStorageSync('token', apiRes.data.accessToken);
+
 								// 登录成功
-								uni.showToast({
-									title: "登录成功!",
-									icon: "none",
-								});
+								// uni.showToast({
+								// 	title: "登录成功!",
+								// 	icon: "none",
+								// });
 								//获取用户信息
 								getUserInfo().then((user) => {
 									
 									console.log("user:", user)
 									
-									storage.setUserInfo(user.data.result);
+									storage.setUserInfo(user);
 									storage.setHasLogin(true);
 
 									uni.navigateBack({
@@ -192,7 +195,7 @@
 			getPhoneNumber(e) {
 				let iv = e.detail.iv;
 				let encryptedData = e.detail.encryptedData;
-				if (!e.detail.encryptedData) {
+				if (!e.detail.encryptedData) {ƒ
 					uni.showToast({
 						title: "请授予手机号码权限，手机号码会和会员系统用户绑定！",
 						icon: "none",
@@ -202,16 +205,17 @@
 
 				let code = this.code;
 				let image = this.image;
-				let nickName = this.nickName;
+				
+				let nickname = this.nickname;	
 				mpAutoLogin({
 					encryptedData,
 					iv,
 					code,
 					image,
-					nickName,
+					nickname,
 				}).then((res) => {
-					storage.setAccessToken(res.data.result.accessToken);
-					storage.setRefreshToken(res.data.result.refreshToken);
+					storage.setAccessToken(res.data.data.accessToken);
+					storage.setRefreshToken(res.data.data.refreshToken);
 					// 登录成功
 					uni.showToast({
 						title: "登录成功!",
@@ -219,7 +223,7 @@
 					});
 					//获取用户信息
 					getUserInfo().then((user) => {
-						storage.setUserInfo(user.data.result);
+						storage.setUserInfo(user.data.data);
 						storage.setHasLogin(true);
 
 						uni.navigateBack({

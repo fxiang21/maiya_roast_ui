@@ -4,7 +4,7 @@
       <u-image width=140 height="140" shape="circle" :src="userInfo.face || userImage" mode="">
       </u-image>
       <view class="user-name">
-        {{ userInfo.id ? userInfo.nickName || '' : '暂未登录'  }}
+        {{ userInfo.id ? userInfo.nickname || '' : '暂未登录'  }}
       </view>
       <u-icon color="#ccc" name="arrow-right"></u-icon>
     </view>

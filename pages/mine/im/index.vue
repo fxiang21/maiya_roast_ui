@@ -18,7 +18,7 @@
         <view v-if="item.my" class="flex justify-end padding-right one-show  align-start  padding-top">
           <view class="flex justify-end" style="width: 400rpx;margin-top: 12px;">
             <view>
-              <view class="user-name">{{ user.nickName }}</view>
+              <view class="user-name">{{ user.nickname }}</view>
               <view class="margin-left padding-chat bg-user-orang" style="border-radius: 35rpx; ">
                 <text style="word-break: break-all;"
                   v-if="item.messageType === 'MESSAGE' && !emojistwo.includes(item.text)">{{ item.text }}</text>

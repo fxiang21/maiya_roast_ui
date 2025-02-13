@@ -9,9 +9,9 @@
         <image :src="userInfo.face || userImage"></image>
       </view>
       <view class="head-2" v-if="userInfo.id">
-		  <view class="user-name">
-		    {{ userInfo.nick_name === '微信用户' ? userInfo.username : userInfo.nick_ame }}
-		  </view>
+        <view class="user-name">
+          {{ userInfo.nickname === '微信用户' ? userInfo.username : userInfo.nickname }}
+        </view>
       </view>
       <view class="head-2" v-else>
         <view class="user-name">登录/注册</view>
@@ -19,7 +19,7 @@
       <u-icon style="display: flex;align-items: flex-start;" name="arrow-right"></u-icon>
     </view>
     <!-- 积分，优惠券，关注， -->
-    <div class="pointBox box">
+    <!-- <div class="pointBox box"> -->
       <!-- <u-row text-align="center" gutter="16" class="point"> -->
 <!--        <u-col text-align="center" span="4" @click="navigateTo('/pages/mine/deposit/operation')">
           <view>预存款</view>
@@ -37,7 +37,7 @@
         </u-col> -->
       <!-- </u-row> -->
       <!-- 我的订单，代付款 -->
-      <view class="order">
+      <!-- <view class="order"> -->
       <!--  <view class="order-item" @click="navigateTo('/pages/order/myOrder?status=1')">
           <div class="bag bag2">
             <u-icon name="bag-fill" size="35" color="#fff"></u-icon>
@@ -62,14 +62,14 @@
           </div>
           <view>售后</view>
         </view> -->
-        <view class="order-item" @click="navigateTo('/pages/order/myOrder?status=0')">
+       <!-- <view class="order-item" @click="navigateTo('/pages/order/myOrder?status=0')">
           <div class="bag bag1">
             <u-icon name="order" size="35" color="#fff"></u-icon>
           </div>
           <view>我的订单</view>
-        </view>
-      </view>
-    </div>
+        </view> -->
+      <!-- </view>
+    </div> -->
     <!-- 常用工具 -->
 
     <tool />
@@ -78,9 +78,9 @@
 </template>
 <script>
 import tool from "@/pages/tabbar/user/utils/tool.vue";
-import { getCouponsNum, getFootprintNum } from "@/api/members.js";
-import { getUserWallet } from "@/api/members";
+import { getCouponsNum, getFootprintNum, getUserWallet } from "@/api/members.js";
 import configs from '@/config/config'
+
 export default {
   components: {
     tool,
@@ -88,7 +88,7 @@ export default {
   data() {
     return {
       configs,
-      userImage:configs.defaultUserPhoto,
+      userImage: configs.defaultUserPhoto,
       coverTransform: "translateY(0px)",
       coverTransition: "0s",
       moving: false,
@@ -98,12 +98,15 @@ export default {
       walletNum: "",
     };
   },
-  onLoad() { },
+  onLoad() {
+    console.log("onLoad:", this.userInfo)
+   },
   onShow() {
+    console.log("onShow:", this.userInfo)
     this.userInfo = this.$options.filters.isLogin() || {};
 	console.log("userInfo:", this.userInfo)
     if (this.$options.filters.isLogin("auth")) {
-      this.getUserOrderNum();
+      // this.getUserOrderNum();
     } else {
       this.walletNum = 0;
       this.couponNum = 0;
@@ -111,7 +114,7 @@ export default {
     }
   },
   onPullDownRefresh() {
-    this.getUserOrderNum();
+    // this.getUserOrderNum();
     this.userInfo = this.$options.filters.isLogin();
   },
   // #ifndef MP
@@ -127,7 +130,6 @@ export default {
   methods: {
     /**
      * 统一跳转接口,拦截未登录路由
-     * navigator标签现在默认没有转场动画，所以用view
      */
     navigateTo(url) {
       uni.navigateTo({

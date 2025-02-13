@@ -426,7 +426,7 @@
 							provider: item.appcode,
 							success: function(infoRes) {
 								//写入用户信息
-								uni.setStorageSync("nickname", infoRes.userInfo.nickName);
+								uni.setStorageSync("nickname", infoRes.userInfo.nickname);
 								uni.setStorageSync("avatar", infoRes.userInfo.avatarUrl);
 								uni.setStorageSync("unionId", infoRes.userInfo.unionId || infoRes.userInfo.unionid);
 

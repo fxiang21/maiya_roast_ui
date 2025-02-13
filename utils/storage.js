@@ -9,6 +9,14 @@ const FACE_LOGIN = isDev ? "face_login_dev" : "face_login";
 const FINGER_LOGIN = isDev ? "finger_login_dev" : "finger_login";
 const CART_BACKBTN = isDev ? "cart_backbtn_dev" : "cart_backbtn";
 const AFTERSALE_DATA = isDev ? "aftersale_data_dev" : "aftersale_data";
+
+const STORAGE_KEY = {
+  USER_INFO: USER_INFO,
+  ACCESS_TOKEN: ACCESS_TOKEN,
+  REFRESH_TOKEN: REFRESH_TOKEN,
+  // 其他存储键
+};
+
 export default {
   //写入自动发券
   setAutoCp(val){
@@ -53,12 +61,12 @@ export default {
     uni.setStorageSync(FINGER_LOGIN, val);
   },
   // 写入用户信息
-  setUserInfo(val) {
-    uni.setStorageSync(USER_INFO, val);
+  setUserInfo(data) {
+    uni.setStorageSync(STORAGE_KEY.USER_INFO, data);
   },
   // 获取用户信息
   getUserInfo() {
-    return uni.getStorageSync(USER_INFO);
+    return uni.getStorageSync(STORAGE_KEY.USER_INFO) || {};
   },
   setTalkToUser(val){
     uni.setStorageSync("TALK_TO_USER", val);
@@ -87,12 +95,12 @@ export default {
     uni.removeStorageSync(UUID);
   },
   // 写入accessToken
-  setAccessToken(val) {
-    uni.setStorageSync(ACCESS_TOKEN, val);
+  setAccessToken(token) {
+    uni.setStorageSync(STORAGE_KEY.ACCESS_TOKEN, token);
   },
   // 获取accessToken
   getAccessToken() {
-    return uni.getStorageSync(ACCESS_TOKEN);
+    return uni.getStorageSync(STORAGE_KEY.ACCESS_TOKEN) || '';
   },
   // 后退购物车
   setCartBackbtn(val) {
@@ -101,19 +109,19 @@ export default {
 
   // 删除token
   removeAccessToken() {
-    uni.removeStorageSync(ACCESS_TOKEN);
+    uni.removeStorageSync(STORAGE_KEY.ACCESS_TOKEN);
   },
   // 写入刷新token
-  setRefreshToken(val) {
-    uni.setStorageSync(REFRESH_TOKEN, val);
+  setRefreshToken(token) {
+    uni.setStorageSync(STORAGE_KEY.REFRESH_TOKEN, token);
   },
   // 获取刷新token
   getRefreshToken() {
-    return uni.getStorageSync(REFRESH_TOKEN);
+    return uni.getStorageSync(STORAGE_KEY.REFRESH_TOKEN) || '';
   },
   // 删除token
   removeRefreshToken() {
-    uni.removeStorageSync(REFRESH_TOKEN);
+    uni.removeStorageSync(STORAGE_KEY.REFRESH_TOKEN);
   },
 
   setAfterSaleData(val) {
@@ -133,5 +141,10 @@ export default {
   },
   getImGoodsLink() {
   return  uni.getStorageSync('imGoodId');
+  },
+  clearAll() {
+    Object.keys(STORAGE_KEY).forEach(key => {
+      uni.removeStorageSync(STORAGE_KEY[key]);
+    });
   },
 };

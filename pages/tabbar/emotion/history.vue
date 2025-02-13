@@ -47,6 +47,12 @@
 
           <!-- 交互区域 -->
           <view class="interaction">
+            <!-- 新增锁定状态图标，位于最左侧 -->
+            <view class="action-btn lock-icon" @click.stop="togglePublic(item.id)">
+              <text class="iconfont" :class="{ 'icon-unlock': item.is_public, 'icon-lock': !item.is_public }"></text>
+            </view>
+            
+            <!-- 点赞按钮 -->
             <view 
               class="action-btn" 
               :class="{'active': item.liked}"
@@ -55,6 +61,8 @@
               <text class="iconfont icon-like like-icon">&#xe601;</text>
               <text class="count">{{ item.like_count }}</text>
             </view>
+            
+            <!-- 评论按钮 -->
             <view 
               class="action-btn" 
               @click.stop="showCommentDialog(item)"
@@ -210,6 +218,12 @@
             default: return "neutral";
           }
         }
+      },
+      lockIconClass() {
+        return (isPublic) => ({
+          'icon-unlock': isPublic,
+          'icon-lock': !isPublic
+        });
       }
     },
     created() {
@@ -417,11 +431,10 @@
   /* 在线链接服务仅供平台体验和调试使用，平台不承诺服务的稳定性，企业客户需下载字体包自行发布使用并做好备份。 */
   @font-face {
     font-family: 'iconfont';  /* Project id 4812679 */
-    src: url('//at.alicdn.com/t/c/font_4812679_0aa1swpdobru.woff2?t=1738908144414') format('woff2'),
-        url('//at.alicdn.com/t/c/font_4812679_0aa1swpdobru.woff?t=1738908144414') format('woff'),
-        url('//at.alicdn.com/t/c/font_4812679_0aa1swpdobru.ttf?t=1738908144414') format('truetype');
+    src: url('//at.alicdn.com/t/c/font_4812679_566p0028xv6.woff2?t=1738932749046') format('woff2'),
+        url('//at.alicdn.com/t/c/font_4812679_566p0028xv6.woff?t=1738932749046') format('woff'),
+        url('//at.alicdn.com/t/c/font_4812679_566p0028xv6.ttf?t=1738932749046') format('truetype');
   }
-
   .container {
     min-height: 100vh;
     background: linear-gradient(180deg, #2c2c4c 0%, #1a1b2f 100%);
@@ -781,5 +794,14 @@
 
   .iconfont {
     font-family: "iconfont" !important;
+  }
+
+  /* 修正图标样式 */
+  .icon-lock:before {
+    content: "\e602"; // 锁定图标编码
+  }
+
+  .icon-unlock:before {
+    content: "\e882"; // 解锁图标编码
   }
   </style>

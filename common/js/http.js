@@ -557,7 +557,7 @@ function uploadEmotionAudio(tempFilePath, successCallback, failCallback, extraDa
 	// 获取认证信息
 	const token = uni.getStorageSync('token');
 	const authHeader = token ? 
-		{ 'Authorization': token } : 
+		{ 'Authorization': `Bearer ${token}`} : 
 		{ 'X-Anonymous-ID': getOrGenerateDeviceId() };
 	
 	if (tempFilePath) {

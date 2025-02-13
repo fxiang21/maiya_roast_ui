@@ -10,14 +10,14 @@ const dev = {
   // common: "http://192.168.0.113:8890",
   // buyer: "http://192.168.0.113:8888",
   // im: "http://192.168.0.113:8885",
-  buyer: "http://192.168.0.100",
+  buyer: "http://192.168.0.100:8001/api/v1",
 };
 // 生产环境
 const prod = {
   im: "https://im-api.pickmall.cn",
   common: "https://common-api.pickmall.cn",
   // buyer: "https://buyer-api.pickmall.cn",
-  buyer: "http://192.168.0.100",
+  buyer: "http://192.168.0.100:8001/api/v1",
 };
 
 //默认生产环境
