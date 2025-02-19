@@ -226,7 +226,7 @@
 				}
 			},
 			start() {
-				this.$u.toast("验证码已发送");
+				// this.$u.toast("验证码已发送");
 				this.flage = true;
 
 				this.$refs.verification.hide();

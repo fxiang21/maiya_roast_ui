@@ -1,0 +1,44 @@
+@font-face {
+  font-family: 'iconfont';  /* Project id 4812679 */
+  src: url('//at.alicdn.com/t/c/font_4812679_566p0028xv6.woff2?t=1738932749046') format('woff2'),
+       url('//at.alicdn.com/t/c/font_4812679_566p0028xv6.woff?t=1738932749046') format('woff'),
+       url('//at.alicdn.com/t/c/font_4812679_566p0028xv6.ttf?t=1738932749046') format('truetype');
+}
+
+.iconfont {
+  font-family: "iconfont" !important;
+  font-style: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.icon-empty:before {
+  content: "\e74a";
+  display: inline-block;
+}
+
+.icon-lock:before {
+  content: "\e602";
+}
+
+.icon-unlock:before {
+  content: "\e882";
+}
+
+
+.icon-private:before {
+  content: "\e601"; /* 示例图标编码 */
+}
+  
+  .icon-mic:before {
+    content: "\e641";
+  }
+  
+  .icon-keyboard:before {
+    content: "\e610";
+  }
+  
+  .icon-send:before {
+    content: "\e600";
+  }
+/* 可以根据需要继续添加更多图标类 */ 

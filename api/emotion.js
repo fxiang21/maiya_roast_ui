@@ -243,4 +243,76 @@ export function toggleLike(emotionId, successCallback, failCallback) {
   }).catch((error) => {
     failCallback && failCallback(new Error('请求失败：' + error.message))
   })
+}
+
+/**
+ * 获取情感统计数据
+ * @param {String} period 统计周期 (daily/weekly/monthly)
+ * @param {Function} successCallback 成功回调
+ * @param {Function} failCallback 失败回调
+ */
+export function getEmotionStats(period, successCallback, failCallback) {
+  const deviceId = getOrGenerateDeviceId()
+  if (period === 'week' || period === 'weekly') {
+    period = 'daily'
+  } else if (period === 'month' || period === 'monthly') {
+    period = 'weekly'
+  } else if (period === 'year' || period === 'yearly') {
+    period = 'monthly'
+  }
+
+  return http.request({
+    url: `speech/emotion/statistics`,
+    method: Method.GET,
+    needToken: true,
+    data: {
+      period
+    },
+    header: {
+      'content-type': 'application/json',
+      'Authorization': uni.getStorageSync('token') || '',
+      'X-Anonymous-ID': deviceId
+    },
+  }).then((res) => {
+    if (res.data.code === 200) {
+      successCallback && successCallback(res.data)
+    } else {
+      failCallback && failCallback(new Error(res.message || '获取统计数据失败'))
+    }
+  }).catch((error) => {
+    failCallback && failCallback(new Error('请求失败：' + error.message))
+  })
+} 
+
+
+/**
+ * 获取情感周期统计数据
+ * @param {String} period 统计周期 (week/month/year/all)
+ * @param {Function} successCallback 成功回调
+ * @param {Function} failCallback 失败回调
+ */
+export function getPeriodEmotionStats(period, successCallback, failCallback) {
+  const deviceId = getOrGenerateDeviceId()
+
+  return http.request({
+    url: `speech/emotion/period_statistics`,
+    method: Method.GET,
+    needToken: true,
+    data: {
+      period
+    },
+    header: {
+      'content-type': 'application/json',
+      'Authorization': uni.getStorageSync('token') || '',
+      'X-Anonymous-ID': deviceId
+    },
+  }).then((res) => {
+    if (res.data.code === 200) {
+      successCallback && successCallback(res.data)
+    } else {
+      failCallback && failCallback(new Error(res.message || '获取统计数据失败'))
+    }
+  }).catch((error) => {
+    failCallback && failCallback(new Error('请求失败：' + error.message))
+  })
 } 

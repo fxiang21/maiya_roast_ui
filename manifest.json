@@ -190,7 +190,9 @@
     /* 快应用特有相关 */
     "mp-weixin" : {
         /* 小程序特有相关 */
-        "usingComponents" : true,
+        "usingComponents" : {
+            "qiun-data-charts": "@qiun/ucharts-mp/components/qiun-data-charts/qiun-data-charts"
+        },
         "appid" : "wxed6f2ecfbe22a39a",
         "optimization" : {
             "subPackages" : true

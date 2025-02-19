@@ -259,6 +259,7 @@ import * as websocket from '@/common/js/websocket.js'
 
 <style lang="scss">
 	@import "uview-ui/index.scss";
+	@import "@/assets/styles/iconfonts.scss";
 
 	// -------适配底部安全区  苹果x系列刘海屏
 
@@ -275,6 +276,9 @@ import * as websocket from '@/common/js/websocket.js'
 
 	body {
 		background-color: $bg-color;
+		margin: 0;
+		padding: 0;
+		font-family: Arial, sans-serif;
 	}
 
 	/************************ */
@@ -290,32 +294,4 @@ import * as websocket from '@/common/js/websocket.js'
 	
 	
 	
-</style>
-
-<style>
-@font-face {
-  font-family: 'iconfont';
-  src: url('//at.alicdn.com/t/c/font_4812679_cr0enve2vq.woff2?t=1737360566699') format('woff2'),
-       url('//at.alicdn.com/t/c/font_4812679_cr0enve2vq.woff?t=1737360566699') format('woff'),
-       url('//at.alicdn.com/t/c/font_4812679_cr0enve2vq.ttf?t=1737360566699') format('truetype');
-}
-
-.iconfont {
-  font-family: "iconfont" !important;
-  font-style: normal;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-.icon-mic:before {
-  content: "\e641";
-}
-
-.icon-keyboard:before {
-  content: "\e610";
-}
-
-.icon-send:before {
-  content: "\e600";
-}
 </style>

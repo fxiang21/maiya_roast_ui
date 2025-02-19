@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "b8302f05-ea7f-4247-b94e-b648f26cabd0",
+		"_postman_id": "4c2d7aac-44e0-48d9-9d1f-e009305c1b6c",
 		"name": "情感分析 API",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "532847"
@@ -10,24 +10,84 @@
 			"name": "情感分析",
 			"item": [
 				{
+					"name": "创建情感分析记录",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							},
+							{
+								"key": "X-Anonymous-ID",
+								"value": "{{X-Anonymous-ID}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"original_text\": \"今天炒股赚钱了，哈哈\",\n    \"is_public\": true\n}"
+						},
+						"url": {
+							"raw": "http://{{host}}:8001/api/v1/speech/emotion",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "8001",
+							"path": [
+								"api",
+								"v1",
+								"speech",
+								"emotion"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "创建成功",
+							"code": 201,
+							"body": "{\"code\": 201, \"message\": \"情感分析记录创建成功\", \"data\": {\"id\": \"{{emotion_id}}\"}}"
+						},
+						{
+							"name": "参数错误",
+							"code": 400,
+							"body": "{\"code\": 400, \"message\": \"参数错误\"}"
+						},
+						{
+							"name": "未提供身份标识",
+							"code": 401,
+							"body": "{\"code\": 401, \"message\": \"未提供有效的身份标识\"}"
+						}
+					]
+				},
+				{
 					"name": "获取情感分析历史",
 					"request": {
 						"method": "GET",
 						"header": [
 							{
 								"key": "X-Anonymous-ID",
-								"value": "4ga7vlm66a69tvnelqkoyd",
+								"value": "{{X-Anonymous-ID}}",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
 								"type": "text"
 							}
 						],
 						"url": {
-							"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/history?page=1&page_size=10",
+							"raw": "http://{{host}}:8001/api/v1/speech/emotion/history?page=1&page_size=10",
 							"protocol": "http",
 							"host": [
-								"192",
-								"168",
-								"0",
-								"100"
+								"{{host}}"
 							],
 							"port": "8001",
 							"path": [
@@ -51,207 +111,43 @@
 					},
 					"response": [
 						{
-							"name": "获取情感分析历史",
-							"originalRequest": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "X-Anonymous-ID",
-										"value": "4ga7vlm66a69tvnelqkoyd",
-										"type": "text"
-									}
-								],
-								"url": {
-									"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/history?page=1&page_size=2",
-									"protocol": "http",
-									"host": [
-										"192",
-										"168",
-										"0",
-										"100"
-									],
-									"port": "8001",
-									"path": [
-										"api",
-										"v1",
-										"speech",
-										"emotion",
-										"history"
-									],
-									"query": [
-										{
-											"key": "page",
-											"value": "1"
-										},
-										{
-											"key": "page_size",
-											"value": "2"
-										}
-									]
-								}
-							},
-							"status": "OK",
+							"name": "获取成功",
 							"code": 200,
-							"_postman_previewlanguage": "json",
-							"header": [
-								{
-									"key": "Content-Type",
-									"value": "application/json; charset=utf-8"
-								},
-								{
-									"key": "Date",
-									"value": "Fri, 07 Feb 2025 00:24:14 GMT"
-								},
-								{
-									"key": "Content-Length",
-									"value": "1004"
-								}
-							],
-							"cookie": [],
-							"body": "{\n    \"code\": 200,\n    \"message\": \"获取吐槽历史成功\",\n    \"data\": {\n        \"total\": 9,\n        \"page\": 1,\n        \"page_size\": 2,\n        \"total_pages\": 5,\n        \"data\": [\n            {\n                \"id\": \"67a4c423f0680b8b5a2588e3\",\n                \"user_id\": \"000000000000000000000000\",\n                \"anonymous_id\": \"4ga7vlm66a69tvnelqkoyd\",\n                \"original_text\": \"老板又是下班了开会，烦\",\n                \"converted_text\": \"\",\n                \"emotion_result\": {\n                    \"percentage\": {\n                        \"愤怒\": 100\n                    },\n                    \"category\": \"工作\",\n                    \"target\": \"老板下班开会\",\n                    \"weather\": \"Storm\",\n                    \"encourage\": \"\"\n                },\n                \"target_id\": \"000000000000000000000000\",\n                \"created_at\": 1738851363,\n                \"is_public\": true,\n                \"like_count\": 0,\n                \"dislike_count\": 0,\n                \"comment_count\": 0\n            },\n            {\n                \"id\": \"67a46a84dba433101a342441\",\n                \"user_id\": \"000000000000000000000000\",\n                \"anonymous_id\": \"4ga7vlm66a69tvnelqkoyd\",\n                \"original_text\": \"老板又是下班了开会，烦\",\n                \"converted_text\": \"\",\n                \"emotion_result\": {\n                    \"percentage\": {\n                        \"愤怒\": 100\n                    },\n                    \"category\": \"工作\",\n                    \"target\": \"老板下班开会\",\n                    \"weather\": \"Storm\",\n                    \"encourage\": \"\"\n                },\n                \"target_id\": \"000000000000000000000000\",\n                \"created_at\": 1738828420,\n                \"is_public\": true,\n                \"like_count\": 1,\n                \"dislike_count\": 0,\n                \"comment_count\": 0\n            }\n        ]\n    }\n}"
-						}
-					]
-				},
-				{
-					"name": "语音情感分析",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "X-Anonymous-ID",
-								"value": "4ga7vlm66a69tvnelqkoyd",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "formdata",
-							"formdata": [
-								{
-									"key": "file",
-									"type": "file",
-									"src": "/path/to/audio.mp3"
-								}
-							]
+							"body": "{\n    \"code\": 200,\n    \"message\": \"获取吐槽历史成功\",\n    \"data\": {\n        \"total\": 9,\n        \"page\": 1,\n        \"page_size\": 10,\n        \"records\": [\n            {\n                \"id\": \"67b2f39a141bd7bcbb4c5ae5\",\n                \"original_text\": \"今天炒股赚钱了，哈哈\",\n                \"is_public\": true,\n                \"created_at\": 1739781018,\n                \"emotion_result\": {\n                    \"percentage\": {\"快乐\": 100},\n                    \"category\": \"生活\",\n                    \"target\": \"无\",\n                    \"weather\": \"Sunny\"\n                }\n            }\n        ]\n    }\n}"
 						},
-						"url": {
-							"raw": "http://192.168.0.100:8001/api/v1/emotion/analysis?is_public=true&text=老板又是下班了开会，烦",
-							"protocol": "http",
-							"host": [
-								"192",
-								"168",
-								"0",
-								"100"
-							],
-							"port": "8001",
-							"path": [
-								"api",
-								"v1",
-								"emotion",
-								"analysis"
-							],
-							"query": [
-								{
-									"key": "is_public",
-									"value": "true"
-								},
-								{
-									"key": "text",
-									"value": "老板又是下班了开会，烦"
-								}
-							]
-						}
-					},
-					"response": [
 						{
-							"name": "语音情感分析",
-							"originalRequest": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "X-Anonymous-ID",
-										"value": "4ga7vlm66a69tvnelqkoyd",
-										"type": "text"
-									}
-								],
-								"body": {
-									"mode": "formdata",
-									"formdata": [
-										{
-											"key": "file",
-											"type": "file",
-											"src": "/path/to/audio.mp3"
-										}
-									]
-								},
-								"url": {
-									"raw": "http://192.168.0.100:8001/api/v1/emotion/analysis?is_public=true&text=老板又是下班了开会，烦",
-									"protocol": "http",
-									"host": [
-										"192",
-										"168",
-										"0",
-										"100"
-									],
-									"port": "8001",
-									"path": [
-										"api",
-										"v1",
-										"emotion",
-										"analysis"
-									],
-									"query": [
-										{
-											"key": "is_public",
-											"value": "true"
-										},
-										{
-											"key": "text",
-											"value": "老板又是下班了开会，烦"
-										}
-									]
-								}
-							},
-							"status": "OK",
-							"code": 200,
-							"_postman_previewlanguage": "json",
-							"header": [
-								{
-									"key": "Content-Type",
-									"value": "application/json; charset=utf-8"
-								},
-								{
-									"key": "Date",
-									"value": "Thu, 06 Feb 2025 07:53:40 GMT"
-								},
-								{
-									"key": "Content-Length",
-									"value": "349"
-								}
-							],
-							"cookie": [],
-							"body": "{\n    \"code\": 200,\n    \"message\": \"情感分析成功\",\n    \"data\": {\n        \"emotion\": {\n            \"percentage\": {\n                \"愤怒\": 100\n            },\n            \"category\": \"工作\",\n            \"target\": \"老板下班开会\",\n            \"weather\": \"Storm\",\n            \"encourage\": \"加油，暂时的烦恼总会过去，说不定之后工作会越来越顺利，要保持积极的心态面对！\"\n        },\n        \"is_public\": true,\n        \"text\": \"老板又是下班了开会，烦\"\n    }\n}"
+							"name": "未找到记录",
+							"code": 404,
+							"body": "{\"code\": 404, \"message\": \"未找到相关记录\"}"
+						},
+						{
+							"name": "未提供身份标识",
+							"code": 401,
+							"body": "{\"code\": 401, \"message\": \"未提供有效的身份标识\"}"
 						}
 					]
 				},
 				{
-					"name": "获取情感统计",
+					"name": "获取情感统计数据",
 					"request": {
 						"method": "GET",
 						"header": [
 							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							},
+							{
 								"key": "X-Anonymous-ID",
-								"value": "4ga7vlm66a69tvnelqkoyd",
+								"value": "{{X-Anonymous-ID}}",
 								"type": "text"
 							}
 						],
 						"url": {
-							"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/statistics",
+							"raw": "http://{{host}}:8001/api/v1/speech/emotion/statistics?period=daily",
 							"protocol": "http",
 							"host": [
-								"192",
-								"168",
-								"0",
-								"100"
+								"{{host}}"
 							],
 							"port": "8001",
 							"path": [
@@ -260,65 +156,254 @@
 								"speech",
 								"emotion",
 								"statistics"
+							],
+							"query": [
+								{
+									"key": "period",
+									"value": "daily"
+								}
 							]
 						}
 					},
 					"response": [
 						{
-							"name": "获取情感统计",
-							"originalRequest": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "X-Anonymous-ID",
-										"value": "4ga7vlm66a69tvnelqkoyd",
-										"type": "text"
-									}
-								],
-								"url": {
-									"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/statistics?period=daily",
-									"protocol": "http",
-									"host": [
-										"192",
-										"168",
-										"0",
-										"100"
-									],
-									"port": "8001",
-									"path": [
-										"api",
-										"v1",
-										"speech",
-										"emotion",
-										"statistics"
-									],
-									"query": [
-										{
-											"key": "period",
-											"value": "daily"
-										}
-									]
-								}
-							},
-							"status": "OK",
+							"name": "获取成功",
 							"code": 200,
-							"_postman_previewlanguage": "json",
-							"header": [
-								{
-									"key": "Content-Type",
-									"value": "application/json; charset=utf-8"
-								},
-								{
-									"key": "Date",
-									"value": "Thu, 06 Feb 2025 07:53:54 GMT"
-								},
-								{
-									"key": "Content-Length",
-									"value": "169"
-								}
+							"body": "{\n    \"code\": 200,\n    \"message\": \"获取情感统计数据成功\",\n    \"data\": {\n        \"statistics\": {\n            \"2024-04-27\": {\n                \"category\": {\"生活\": 50},\n                \"emotion\": {\"快乐\": 100},\n                \"complaint_length\": 0,\n                \"target\": {\"无\": 1}\n            }\n        },\n        \"user_stats\": {\n            \"likes_count\": 10,\n            \"comments_count\": 5\n        }\n    }\n}"
+						},
+						{
+							"name": "参数错误",
+							"code": 400,
+							"body": "{\"code\": 400, \"message\": \"统计周期无效\"}"
+						},
+						{
+							"name": "未提供身份标识",
+							"code": 401,
+							"body": "{\"code\": 401, \"message\": \"未提供有效的身份标识\"}"
+						}
+					]
+				},
+				{
+					"name": "删除情感分析记录",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							},
+							{
+								"key": "X-Anonymous-ID",
+								"value": "{{X-Anonymous-ID}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://{{host}}:8001/api/v1/speech/emotion/{{emotion_id}}",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
 							],
-							"cookie": [],
-							"body": "{\n    \"code\": 200,\n    \"message\": \"获取情感统计数据成功\",\n    \"data\": {\n        \"2025-02-05\": {\n            \"失望\": 20,\n            \"平静\": 40,\n            \"悲伤\": 40,\n            \"愤怒\": 52.5,\n            \"焦虑\": 35\n        },\n        \"2025-02-06\": {\n            \"愤怒\": 100\n        }\n    }\n}"
+							"port": "8001",
+							"path": [
+								"api",
+								"v1",
+								"speech",
+								"emotion",
+								"{{emotion_id}}"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "删除成功",
+							"code": 200,
+							"body": "{\"code\": 200, \"message\": \"吐槽删除成功\"}"
+						},
+						{
+							"name": "记录不存在或无权限",
+							"code": 404,
+							"body": "{\"code\": 404, \"message\": \"记录不存在或无权限删除\"}"
+						},
+						{
+							"name": "未提供身份标识",
+							"code": 401,
+							"body": "{\"code\": 401, \"message\": \"未提供有效的身份标识\"}"
+						}
+					]
+				},
+				{
+					"name": "点赞",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							},
+							{
+								"key": "X-Anonymous-ID",
+								"value": "{{X-Anonymous-ID}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://{{host}}:8001/api/v1/speech/emotion/{{emotion_id}}/toggle-like",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "8001",
+							"path": [
+								"api",
+								"v1",
+								"speech",
+								"emotion",
+								"{{emotion_id}}",
+								"toggle-like"
+							]
+						},
+						"body": {}
+					},
+					"response": [
+						{
+							"name": "点赞成功",
+							"code": 200,
+							"body": "{\"message\": \"点赞成功\"}"
+						},
+						{
+							"name": "取消点赞成功",
+							"code": 200,
+							"body": "{\"message\": \"取消点赞成功\"}"
+						},
+						{
+							"name": "记录不存在",
+							"code": 404,
+							"body": "{\"message\": \"记录不存在\"}"
+						},
+						{
+							"name": "未提供身份标识",
+							"code": 401,
+							"body": "{\"message\": \"未提供有效的身份标识\"}"
+						}
+					]
+				},
+				{
+					"name": "切换反对状态",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							},
+							{
+								"key": "X-Anonymous-ID",
+								"value": "{{X-Anonymous-ID}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://{{host}}:8001/api/v1/speech/emotion/{{emotion_id}}/toggle-dislike",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "8001",
+							"path": [
+								"api",
+								"v1",
+								"speech",
+								"emotion",
+								"{{emotion_id}}",
+								"toggle-dislike"
+							]
+						},
+						"body": {}
+					},
+					"response": [
+						{
+							"name": "反对成功",
+							"code": 200,
+							"body": "{\"message\": \"反对成功\"}"
+						},
+						{
+							"name": "取消反对成功",
+							"code": 200,
+							"body": "{\"message\": \"取消反对成功\"}"
+						},
+						{
+							"name": "记录不存在",
+							"code": 404,
+							"body": "{\"message\": \"记录不存在\"}"
+						},
+						{
+							"name": "未提供身份标识",
+							"code": 401,
+							"body": "{\"message\": \"未提供有效的身份标识\"}"
+						}
+					]
+				},
+				{
+					"name": "添加评论",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							},
+							{
+								"key": "X-Anonymous-ID",
+								"value": "{{X-Anonymous-ID}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"content\": \"很有意思！\"\n}"
+						},
+						"url": {
+							"raw": "http://{{host}}:8001/api/v1/speech/emotion/{{emotion_id}}/comment",
+							"protocol": "http",
+							"host": [
+								"{{host}}"
+							],
+							"port": "8001",
+							"path": [
+								"api",
+								"v1",
+								"speech",
+								"emotion",
+								"{{emotion_id}}",
+								"comment"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "评论成功",
+							"code": 201,
+							"body": "{\"message\": \"评论成功\"}"
+						},
+						{
+							"name": "记录不存在",
+							"code": 404,
+							"body": "{\"message\": \"记录不存在\"}"
+						},
+						{
+							"name": "未提供身份标识",
+							"code": 401,
+							"body": "{\"message\": \"未提供有效的身份标识\"}"
 						}
 					]
 				}
@@ -326,7 +411,6 @@
 		},
 		{
 			"name": "用户信息",
-			"description": "获取和更新用户信息的接口",
 			"item": [
 				{
 					"name": "获取用户信息",
@@ -340,7 +424,7 @@
 							}
 						],
 						"url": {
-							"raw": "http://192.168.0.100:8001/api/v1/user/profile",
+							"raw": "http://192.168.0.100:8001/user/profile",
 							"protocol": "http",
 							"host": [
 								"192",
@@ -350,8 +434,6 @@
 							],
 							"port": "8001",
 							"path": [
-								"api",
-								"v1",
 								"user",
 								"profile"
 							]
@@ -360,15 +442,23 @@
 					"response": [
 						{
 							"name": "成功获取用户信息",
-							"originalRequest": {},
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": ""
+								}
+							},
 							"status": "OK",
 							"code": 200,
+							"_postman_previewlanguage": "Text",
 							"header": [
 								{
 									"key": "Content-Type",
 									"value": "application/json; charset=utf-8"
 								}
 							],
+							"cookie": [],
 							"body": "{\n  \"code\": 200,\n  \"message\": \"获取成功\",\n  \"data\": {\n    \"user_id\": \"5f50c31c5bfdc35c0c461b4b\",\n    \"phone_number\": \"13800138000\",\n    \"avatar\": \"http://example.com/avatar.jpg\",\n    \"nickname\": \"测试用户\",\n    \"email\": \"test@example.com\",\n    \"wechat_id\": \"wx12345\",\n    \"anonymous_id\": \"anonymous_abc\",\n    \"linked_user_id\": \"\",\n    \"created_at\": \"2023-10-03T10:00:00Z\",\n    \"updated_at\": \"2023-10-03T12:00:00Z\"\n  }\n}"
 						}
 					]
@@ -391,10 +481,10 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"avatar\": \"http://example.com/new_avatar.jpg\",\n  \"nickname\": \"\", // 留空以生成默认昵称\n  \"email\": \"newemail@example.com\"\n}"
+							"raw": "{\n  \"avatar\": \"http://example.com/new_avatar.jpg\",\n  \"nickname\": \"新昵称\",\n  \"email\": \"newemail@example.com\"\n}"
 						},
 						"url": {
-							"raw": "http://192.168.0.100:8001/api/v1/user/update",
+							"raw": "http://192.168.0.100:8001/user/update",
 							"protocol": "http",
 							"host": [
 								"192",
@@ -404,8 +494,6 @@
 							],
 							"port": "8001",
 							"path": [
-								"api",
-								"v1",
 								"user",
 								"update"
 							]
@@ -414,100 +502,29 @@
 					"response": [
 						{
 							"name": "更新成功响应",
-							"originalRequest": {},
-							"status": "OK",
-							"code": 200,
-							"header": [
-								{
-									"key": "Content-Type",
-									"value": "application/json; charset=utf-8"
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": ""
 								}
-							],
-							"body": "{\n  \"code\": 200,\n  \"message\": \"更新成功\",\n  \"data\": {\n    \"user_id\": \"5f50c31c5bfdc35c0c461b4b\",\n    \"phone_number\": \"13800138000\",\n    \"avatar\": \"http://example.com/new_avatar.jpg\",\n    \"nickname\": \"默认昵称\",\n    \"email\": \"newemail@example.com\",\n    \"wechat_id\": \"wx12345\",\n    \"anonymous_id\": \"anonymous_abc\",\n    \"linked_user_id\": \"\",\n    \"created_at\": \"2023-10-03T10:00:00Z\",\n    \"updated_at\": \"2023-10-03T12:30:00Z\"\n  }\n}"
-						}
-					]
-				},
-				{
-					"name": "退出登录",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer <your_jwt_token>",
-								"type": "text"
 							},
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{}"
-						},
-						"url": {
-							"raw": "http://192.168.0.100:8001/api/v1/auth/logout",
-							"protocol": "http",
-							"host": [
-								"192",
-								"168",
-								"0",
-								"100"
-							],
-							"port": "8001",
-							"path": [
-								"api",
-								"v1",
-								"auth",
-								"logout"
-							]
-						}
-					},
-					"response": [
-						{
-							"name": "退出成功响应",
-							"originalRequest": {},
 							"status": "OK",
 							"code": 200,
+							"_postman_previewlanguage": "Text",
 							"header": [
 								{
 									"key": "Content-Type",
 									"value": "application/json; charset=utf-8"
 								}
 							],
-							"body": "{\n  \"code\": 200,\n  \"message\": \"退出成功\",\n  \"data\": {\n    \"message\": \"您已成功退出登录\"\n  }\n}"
-						},
-						{
-							"name": "未授权响应",
-							"originalRequest": {},
-							"status": "Unauthorized",
-							"code": 401,
-							"header": [
-								{
-									"key": "Content-Type",
-									"value": "application/json; charset=utf-8"
-								}
-							],
-							"body": "{\n  \"code\": 40103,\n  \"message\": \"Authorization头格式错误\"\n}"
-						},
-						{
-							"name": "令牌已被注销响应",
-							"originalRequest": {},
-							"status": "Unauthorized",
-							"code": 401,
-							"header": [
-								{
-									"key": "Content-Type",
-									"value": "application/json; charset=utf-8"
-								}
-							],
-							"body": "{\n  \"code\": 401,\n  \"message\": \"令牌已被注销\"\n}"
+							"cookie": [],
+							"body": "{\n  \"code\": 200,\n  \"message\": \"更新成功\",\n  \"data\": {\n    \"user_id\": \"5f50c31c5bfdc35c0c461b4b\",\n    \"phone_number\": \"13800138000\",\n    \"avatar\": \"http://example.com/new_avatar.jpg\",\n    \"nickname\": \"新昵称\",\n    \"email\": \"newemail@example.com\",\n    \"wechat_id\": \"wx12345\",\n    \"anonymous_id\": \"anonymous_abc\",\n    \"linked_user_id\": \"\",\n    \"created_at\": \"2023-10-03T10:00:00Z\",\n    \"updated_at\": \"2023-10-03T12:30:00Z\"\n  }\n}"
 						}
 					]
 				}
-			]
+			],
+			"description": "获取和更新用户信息的接口"
 		},
 		{
 			"name": "互动相关",
@@ -1081,20 +1098,25 @@
 							{
 								"key": "X-Anonymous-ID",
 								"value": "4ga7vlm66a69tvnelqkoyd",
-								"type": "text",
-								"description": "匿名用户ID，与 Authorization 二选一"
+								"description": "匿名用户ID，与 Authorization 二选一",
+								"type": "text"
 							},
 							{
 								"key": "Authorization",
 								"value": "Bearer {{token}}",
-								"type": "text",
-								"description": "登录用户token，与 X-Anonymous-ID 二选一"
+								"description": "登录用户token，与 X-Anonymous-ID 二选一",
+								"type": "text"
 							}
 						],
 						"url": {
 							"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/toggle-like",
 							"protocol": "http",
-							"host": ["192", "168", "0", "100"],
+							"host": [
+								"192",
+								"168",
+								"0",
+								"100"
+							],
 							"port": "8001",
 							"path": [
 								"api",
@@ -1109,44 +1131,181 @@
 					"response": [
 						{
 							"name": "点赞成功",
-							"code": 200,
-							"body": {
-								"code": 200,
-								"message": "点赞成功",
-								"data": {
-									"is_liked": true
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Anonymous-ID",
+										"value": "4ga7vlm66a69tvnelqkoyd",
+										"description": "匿名用户ID，与 Authorization 二选一",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}",
+										"description": "登录用户token，与 X-Anonymous-ID 二选一",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/toggle-like",
+									"protocol": "http",
+									"host": [
+										"192",
+										"168",
+										"0",
+										"100"
+									],
+									"port": "8001",
+									"path": [
+										"api",
+										"v1",
+										"speech",
+										"emotion",
+										"{{emotion_id}}",
+										"toggle-like"
+									]
 								}
-							}
+							},
+							"code": 200,
+							"_postman_previewlanguage": "Text",
+							"header": [],
+							"cookie": [],
+							"body": ""
 						},
 						{
 							"name": "取消点赞成功",
-							"code": 200,
-							"body": {
-								"code": 200,
-								"message": "已取消点赞",
-								"data": {
-									"is_liked": false
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Anonymous-ID",
+										"value": "4ga7vlm66a69tvnelqkoyd",
+										"description": "匿名用户ID，与 Authorization 二选一",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}",
+										"description": "登录用户token，与 X-Anonymous-ID 二选一",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/toggle-like",
+									"protocol": "http",
+									"host": [
+										"192",
+										"168",
+										"0",
+										"100"
+									],
+									"port": "8001",
+									"path": [
+										"api",
+										"v1",
+										"speech",
+										"emotion",
+										"{{emotion_id}}",
+										"toggle-like"
+									]
 								}
-							}
+							},
+							"code": 200,
+							"_postman_previewlanguage": "Text",
+							"header": [],
+							"cookie": [],
+							"body": ""
 						},
 						{
 							"name": "记录不存在",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Anonymous-ID",
+										"value": "4ga7vlm66a69tvnelqkoyd",
+										"description": "匿名用户ID，与 Authorization 二选一",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}",
+										"description": "登录用户token，与 X-Anonymous-ID 二选一",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/toggle-like",
+									"protocol": "http",
+									"host": [
+										"192",
+										"168",
+										"0",
+										"100"
+									],
+									"port": "8001",
+									"path": [
+										"api",
+										"v1",
+										"speech",
+										"emotion",
+										"{{emotion_id}}",
+										"toggle-like"
+									]
+								}
+							},
 							"code": 404,
-							"body": {
-								"code": 404,
-								"message": "情感分析记录不存在"
-							}
+							"_postman_previewlanguage": "Text",
+							"header": [],
+							"cookie": [],
+							"body": ""
 						},
 						{
 							"name": "未提供身份标识",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "X-Anonymous-ID",
+										"value": "4ga7vlm66a69tvnelqkoyd",
+										"description": "匿名用户ID，与 Authorization 二选一",
+										"type": "text"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}",
+										"description": "登录用户token，与 X-Anonymous-ID 二选一",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/toggle-like",
+									"protocol": "http",
+									"host": [
+										"192",
+										"168",
+										"0",
+										"100"
+									],
+									"port": "8001",
+									"path": [
+										"api",
+										"v1",
+										"speech",
+										"emotion",
+										"{{emotion_id}}",
+										"toggle-like"
+									]
+								}
+							},
 							"code": 401,
-							"body": {
-								"code": 401,
-								"message": "需要提供用户身份标识"
-							}
+							"_postman_previewlanguage": "Text",
+							"header": [],
+							"cookie": [],
+							"body": ""
 						}
-					],
-					"description": "切换吐槽的点赞状态，如果之前未点赞则添加点赞，如果已点赞则取消点赞"
+					]
 				}
 			]
 		},
@@ -1169,13 +1328,10 @@
 							"raw": "{\n    \"phone\": \"13800138000\"\n}"
 						},
 						"url": {
-							"raw": "http://192.168.0.100:8001/api/v1/auth/sms/code",
+							"raw": "http://{{host}}:8001/api/v1/auth/sms/code",
 							"protocol": "http",
 							"host": [
-								"192",
-								"168",
-								"0",
-								"100"
+								"{{host}}"
 							],
 							"port": "8001",
 							"path": [
@@ -1187,7 +1343,18 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "成功",
+							"code": 200,
+							"body": "{\"message\": \"验证码发送成功\"}"
+						},
+						{
+							"name": "无效手机号",
+							"code": 400,
+							"body": "{\"message\": \"手机号格式不正确\"}"
+						}
+					]
 				},
 				{
 					"name": "手机号登录",
@@ -1205,13 +1372,10 @@
 							"raw": "{\n    \"phone\": \"13800138000\",\n    \"code\": \"123456\"\n}"
 						},
 						"url": {
-							"raw": "http://192.168.0.100:8001/api/v1/auth/phone_login",
+							"raw": "http://{{host}}:8001/api/v1/auth/phone_login",
 							"protocol": "http",
 							"host": [
-								"192",
-								"168",
-								"0",
-								"100"
+								"{{host}}"
 							],
 							"port": "8001",
 							"path": [
@@ -1222,7 +1386,18 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "登录成功",
+							"code": 200,
+							"body": "{\"token\": \"your_jwt_token_here\"}"
+						},
+						{
+							"name": "验证码错误",
+							"code": 400,
+							"body": "{\"message\": \"验证码不正确\"}"
+						}
+					]
 				},
 				{
 					"name": "关联匿名用户",
@@ -1230,24 +1405,27 @@
 						"method": "POST",
 						"header": [
 							{
-								"key": "X-Anonymous-ID",
-								"value": "4ga7vlm66a69tvnelqkoyd",
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"description": "登录用户token，与 X-Anonymous-ID 二选一",
 								"type": "text"
 							},
 							{
-								"key": "Authorization",
-								"value": "Bearer {{token}}",
+								"key": "X-Anonymous-ID",
+								"value": "{{X-Anonymous-ID}}",
+								"description": "匿名用户ID，与 Authorization 二选一",
 								"type": "text"
 							}
 						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						},
 						"url": {
-							"raw": "http://192.168.0.100:8001/api/v1/auth/link_anonymous",
+							"raw": "http://{{host}}:8001/api/v1/auth/link_anonymous",
 							"protocol": "http",
 							"host": [
-								"192",
-								"168",
-								"0",
-								"100"
+								"{{host}}"
 							],
 							"port": "8001",
 							"path": [
@@ -1258,9 +1436,196 @@
 							]
 						}
 					},
-					"response": []
+					"response": [
+						{
+							"name": "关联成功",
+							"code": 200,
+							"body": "{\"message\": \"关联成功\"}"
+						},
+						{
+							"name": "未提供身份标识",
+							"code": 401,
+							"body": "{\"message\": \"未提供有效的身份标识\"}"
+						}
+					]
 				}
 			]
+		},
+		{
+			"name": "获取情感周期统计",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{token}}",
+						"type": "text",
+						"description": "JWT Token，可选"
+					},
+					{
+						"key": "X-Anonymous-ID",
+						"value": "{{X-Anonymous-ID}}",
+						"type": "text",
+						"description": "匿名用户ID，可选"
+					}
+				],
+				"url": {
+					"raw": "http://{{host}}:8001/api/v1/speech/emotion/period_statistics?period=week",
+					"protocol": "http",
+					"host": ["{{host}}"],
+					"port": "8001",
+					"path": [
+						"api",
+						"v1",
+						"speech",
+						"emotion",
+						"period_statistics"
+					],
+					"query": [
+						{
+							"key": "period",
+							"value": "week",
+							"description": "统计周期：week(本周)、month(本月)、year(今年)、all(所有)"
+						}
+					]
+				},
+				"description": "获取指定周期（周、月、年、全部）的情感统计数据"
+			},
+			"response": [
+				{
+					"name": "获取成功",
+					"originalRequest": {
+						"method": "GET",
+						"url": {
+							"raw": "http://{{host}}:8001/api/v1/speech/emotion/period_statistics?period=week"
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"_postman_previewlanguage": "json",
+					"body": {
+						"code": 200,
+						"message": "获取情感统计数据成功",
+						"data": {
+							"statistics": {
+								"category": {
+									"生活": 50,
+									"工作": 30,
+									"情感": 20
+								},
+								"emotion": {
+									"快乐": 60,
+									"愤怒": 20,
+									"悲伤": 20
+								},
+								"target": {
+									"同事": 2,
+									"家人": 1
+								},
+								"complaint_length": 25
+							},
+							"user_stats": {
+								"likes_count": 10,
+								"comments_count": 5
+							}
+						}
+					}
+				},
+				{
+					"name": "参数错误",
+					"originalRequest": {
+						"method": "GET",
+						"url": {
+							"raw": "http://{{host}}:8001/api/v1/speech/emotion/period_statistics?period=invalid"
+						}
+					},
+					"status": "Bad Request",
+					"code": 400,
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"_postman_previewlanguage": "json",
+					"body": {
+						"code": 40008,
+						"message": "无效的统计周期，必须为 'week', 'month', 'year' 或 'all'"
+					}
+				},
+				{
+					"name": "未提供身份标识",
+					"originalRequest": {
+						"method": "GET",
+						"url": {
+							"raw": "http://{{host}}:8001/api/v1/speech/emotion/period_statistics?period=week"
+						}
+					},
+					"status": "Unauthorized",
+					"code": 401,
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"_postman_previewlanguage": "json",
+					"body": {
+						"code": 401,
+						"message": "未提供有效的身份标识"
+					}
+				},
+				{
+					"name": "服务器错误",
+					"originalRequest": {
+						"method": "GET",
+						"url": {
+							"raw": "http://{{host}}:8001/api/v1/speech/emotion/period_statistics?period=week"
+						}
+					},
+					"status": "Internal Server Error",
+					"code": 500,
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"_postman_previewlanguage": "json",
+					"body": {
+						"code": 50005,
+						"message": "获取情感统计数据失败: 内部错误"
+					}
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
 		}
 	],
 	"variable": [
@@ -1280,6 +1645,11 @@
 			"key": "X-Anonymous-ID",
 			"value": "q6rf0em6t69brrkopitg",
 			"type": "default"
+		},
+		{
+			"key": "host",
+			"value": "192.168.0.108",
+			"type": "string"
 		}
 	]
 }

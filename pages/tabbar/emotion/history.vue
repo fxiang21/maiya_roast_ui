@@ -3,8 +3,33 @@
       <!-- 添加状态栏占位 -->
       <view class="status-bar" :style="{ height: statusBarHeight + 'px' }"></view>
       
+      <!-- 空状态提示 -->
+      <view v-if="showEmptyState" class="empty-state">
+        <view class="empty-content">
+          <!-- 图标和主要提示文字 -->
+          <view class="main-empty">
+            <!-- <view class="iconfont icon-empty"></view> -->
+            <view class="empty-text">
+              <text class="highlight">好</text>与<text class="highlight">不好</text>，
+              <text class="brand-text">黑洞吐槽</text>
+            </view>
+          </view>
+          
+          <!-- 添加鼓励性的随机提示语 -->
+          <view class="encouragement">
+            <text class="tip">{{ randomTip }}</text>
+          </view>
+          
+          <!-- 操作按钮 -->
+          <button class="goto-emotion-btn" @tap="navigateToEmotion">
+            <text class="iconfont icon-edit"></text>
+            去吐槽
+          </button>
+        </view>
+      </view>
+      
       <!-- 历史记录列表 -->
-      <view class="history-list">
+      <view v-else class="history-list">
         <view v-for="item in historyData" 
               :key="item.id" 
               :class="['history-item', getItemEmotionClass(item)]">
@@ -59,7 +84,7 @@
               @click.stop="handleLike(item)"
             >
               <text class="iconfont icon-like like-icon">&#xe601;</text>
-              <text class="count">{{ item.like_count }}</text>
+              <text class="count">{{ item.likes_count }}</text>
             </view>
             
             <!-- 评论按钮 -->
@@ -68,13 +93,17 @@
               @click.stop="showCommentDialog(item)"
             >
               <text class="iconfont icon-pinglun"></text>
-              <text class="count comment-count">{{ item.comment_count }}</text>
+              <text class="count comment-count">{{ item.comments_count }}</text>
             </view>
           </view>
         </view>
       </view>
       <!-- 加载更多组件 -->
-      <uni-load-more :status="loadMoreStatus" @clickLoadMore="loadMore" />
+      <uni-load-more 
+        v-if="!showEmptyState && historyData.length > 0"
+        :status="loadMoreStatus" 
+        @clickLoadMore="loadMore" 
+      />
 
       <!-- 评论弹窗 -->
       <uni-popup ref="commentPopup" type="bottom">
@@ -166,11 +195,11 @@
     data() {
       return {
         statusBarHeight: 0, // 添加状态栏高度变量
-        historyData: [], // 吐槽记录数组
+        historyData: [], // 历史数据数组
         page: 1,
         pageSize: 10,
         totalPages: 1,
-        loadMoreStatus: "more", // 控制加载状态：more-加载前，loading-加载中，noMore-没有更多
+        loadMoreStatus: "more",
         emotionCategories: {
           "快乐": "积极",
           "期待": "积极",
@@ -202,7 +231,15 @@
         commentPage: 1,
         commentPageSize: 10,
         totalCommentPages: 1,
-        isLoadingMore: false
+        isLoadingMore: false,
+        isLoading: false, // 添加加载状态标记
+        tips: [
+          "今天想说点什么呢？",
+          "有什么开心或不开心的事要分享吗？",
+          "倾诉是一种治愈，书写是一种释放",
+          "记录下此刻的心情吧",
+          "让黑洞听听你的故事"
+        ]
       };
     },
     computed: {
@@ -224,6 +261,12 @@
           'icon-unlock': isPublic,
           'icon-lock': !isPublic
         });
+      },
+      showEmptyState() {
+        return Array.isArray(this.historyData) && this.historyData.length === 0 && !this.isLoading
+      },
+      randomTip() {
+        return this.tips[Math.floor(Math.random() * this.tips.length)];
       }
     },
     created() {
@@ -237,44 +280,58 @@
     methods: {
       // 初始化页面
       init() {
-        this.page = 1;
-        this.historyData = [];
-        this.fetchHistory();
+        this.page = 1
+        this.historyData = []
+        this.loadMoreStatus = "more"
+        this.isLoading = false
+        this.fetchHistory()
       },
-      // 调用后端接口获取历史记录
-      fetchHistory() {
+      // 获取历史数据
+      async fetchHistory() {
+        if (this.isLoading) return
+        
+        this.isLoading = true
+        this.loadMoreStatus = "loading"
+
         getEmotionHistory(
-          this.page, 
+          this.page,
           this.pageSize,
-          (res) => {
-            const data = res.data;
-            this.totalPages = data.total_pages;
-            this.historyData = this.historyData.concat(data.data);
-            this.historyData.sort((a, b) => b.created_at - a.created_at);
-            
-            // 更新加载状态
-            if (this.page >= this.totalPages) {
-              this.loadMoreStatus = "noMore";
-            } else {
-              this.loadMoreStatus = "more";
+          async (res) => {
+            try {
+              const data = res.data
+
+              if (this.page === 1) {
+                this.historyData = data.data || []
+              } else {
+                this.historyData = [...this.historyData, ...(data.data || [])]
+              }
+              
+              this.totalPages = data.total_pages
+              this.loadMoreStatus = this.page >= this.totalPages ? "noMore" : "more"
+              this.isLoading = false
+            } catch (error) {
+              this.$u.toast("处理历史记录数据失败")
+              this.isLoading = false
             }
           },
           (error) => {
-            this.$u.toast(error.message || "获取历史记录失败");
-            this.loadMoreStatus = "more";
+            console.error('Error fetching history:', error)
+            this.loadMoreStatus = "more"
+            this.isLoading = false
+            // 只在错误时显示提示
+            this.$u.toast(error.message || "获取历史记录失败")
           }
-        );
+        )
       },
-      // 上拉加载更多
+      // 加载更多
       loadMore() {
-        if (this.loadMoreStatus === "loading") return;
+        if (this.loadMoreStatus === "loading" || this.loadMoreStatus === "noMore") {
+          return
+        }
         
         if (this.page < this.totalPages) {
-          this.loadMoreStatus = "loading";
-          this.page += 1;
-          this.fetchHistory();
-        } else {
-          this.loadMoreStatus = "noMore";
+          this.page += 1
+          this.fetchHistory()
         }
       },
       // 处理点赞
@@ -364,7 +421,7 @@
             const data = res.data
             // 更新当前页数据
             this.historyData = data.data
-            this.totalPages = data.total_pages
+            this.totalPages = data.total_pages 
           },
           (error) => {
             this.$u.toast(error.message || "刷新数据失败")
@@ -422,19 +479,29 @@
       formatTime(timestamp) {
         const date = new Date(timestamp * 1000)
         return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+      },
+      // 刷新方法
+      refresh() {
+        this.init()
+      },
+      // 跳转到吐槽页面
+      navigateToEmotion() {
+        uni.switchTab({
+          url: '/pages/tabbar/emotion/home'
+        })
       }
     },
   };
   </script>
   
   <style lang="scss" scoped>
-  /* 在线链接服务仅供平台体验和调试使用，平台不承诺服务的稳定性，企业客户需下载字体包自行发布使用并做好备份。 */
-  @font-face {
-    font-family: 'iconfont';  /* Project id 4812679 */
-    src: url('//at.alicdn.com/t/c/font_4812679_566p0028xv6.woff2?t=1738932749046') format('woff2'),
-        url('//at.alicdn.com/t/c/font_4812679_566p0028xv6.woff?t=1738932749046') format('woff'),
-        url('//at.alicdn.com/t/c/font_4812679_566p0028xv6.ttf?t=1738932749046') format('truetype');
-  }
+// /* 在线链接服务仅供平台体验和调试使用，平台不承诺服务的稳定性，企业客户需下载字体包自行发布使用并做好备份。 */
+// @font-face {
+//   font-family: 'iconfont';  /* Project id 4812679 */
+//   src: url('//at.alicdn.com/t/c/font_4812679_5fx7dxqo6ur.woff2?t=1739504210268') format('woff2'),
+//        url('//at.alicdn.com/t/c/font_4812679_5fx7dxqo6ur.woff?t=1739504210268') format('woff'),
+//        url('//at.alicdn.com/t/c/font_4812679_5fx7dxqo6ur.ttf?t=1739504210268') format('truetype');
+// }
   .container {
     min-height: 100vh;
     background: linear-gradient(180deg, #2c2c4c 0%, #1a1b2f 100%);
@@ -804,4 +871,113 @@
   .icon-unlock:before {
     content: "\e882"; // 解锁图标编码
   }
+
+  .empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    padding: 0 40rpx;
+    background: linear-gradient(180deg, #2c2c4c 0%, #1a1b2f 100%);
+    
+    .empty-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transform: translateY(-10%);
+      
+      .main-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-bottom: 60rpx;
+        
+        .iconfont {
+          font-size: 120rpx;
+          color: rgba(255, 255, 255, 0.6);
+          margin-bottom: 30rpx;
+        }
+        
+        .empty-text {
+          font-size: 36rpx;
+          color: rgba(255, 255, 255, 0.8);
+          margin-bottom: 20rpx;
+          letter-spacing: 4rpx;
+          font-weight: 300;
+          text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.1);
+          
+          .highlight {
+            color: #7C4DFF;
+            font-weight: 500;
+            background: linear-gradient(135deg, #7C4DFF, #8B5CF6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+          }
+          
+          .brand-text {
+            font-weight: 500;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            padding: 0 4rpx;
+          }
+        }
+      }
+      
+      .encouragement {
+        margin-bottom: 80rpx;
+        text-align: center;
+        
+        .tip {
+          font-size: 28rpx;
+          color: rgba(255, 255, 255, 0.5);
+          font-style: italic;
+          line-height: 1.5;
+          padding: 20rpx 40rpx;
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 30rpx;
+          backdrop-filter: blur(10px);
+        }
+      }
+      
+      .goto-emotion-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        color: #ffffff;
+        border: none;
+        padding: 20rpx 60rpx;
+        border-radius: 40rpx;
+        font-size: 28rpx;
+        box-shadow: 0 4rpx 12rpx rgba(99, 102, 241, 0.2);
+        
+        .iconfont {
+          font-size: 28rpx;
+          margin-right: 10rpx;
+        }
+        
+        &:active {
+          transform: scale(0.98);
+        }
+      }
+    }
+  }
+
+  // 添加简单的渐入动画
+  .empty-content {
+    animation: fadeIn 0.8s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-5%);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(-10%);
+    }
+  }
+
   </style>

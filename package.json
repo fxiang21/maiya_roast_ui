@@ -2,6 +2,7 @@
   "dependencies": {
     "@dcloudio/uni-ui": "^1.5.7",
     "@hyoga/uni-socket.io": "^3.0.4",
+    "@qiun/ucharts": "^2.5.0-20230101",
     "lottie-web": "^5.12.2",
     "uview-ui": "^2.0.37"
   },

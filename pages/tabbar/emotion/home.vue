@@ -818,9 +818,9 @@ export default {
 // 确保添加了字体图标
 @font-face {
   font-family: 'iconfont';  /* Project id 4812679 */
-  src: url('https://at.alicdn.com/t/c/font_4812679_8elh349vf1l.woff2?t=1737091794388') format('woff2'),
-       url('https://at.alicdn.com/t/c/font_4812679_8elh349vf1l.woff?t=1737091794388') format('woff'),
-       url('https://at.alicdn.com/t/c/font_4812679_8elh349vf1l.ttf?t=1737091794388') format('truetype');
+  src: url('//at.alicdn.com/t/c/font_4812679_5fx7dxqo6ur.woff2?t=1739504210268') format('woff2'),
+       url('//at.alicdn.com/t/c/font_4812679_5fx7dxqo6ur.woff?t=1739504210268') format('woff'),
+       url('//at.alicdn.com/t/c/font_4812679_5fx7dxqo6ur.ttf?t=1739504210268') format('truetype');
 }
 
 .icon-mic {

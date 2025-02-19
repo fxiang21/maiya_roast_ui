@@ -29,7 +29,6 @@ function cleanStorage() {
 	storage.setHasLogin(false);
 	storage.setAccessToken("");
 	storage.setRefreshToken("");
-	console.log("清空token");
 	storage.setUuid("");
 	storage.setUserInfo({});
 
@@ -81,25 +80,18 @@ http.setConfig((config) => {
 http.interceptors.request.use(
 	(config) => {
 		/* 请求之前拦截器。可以使用async await 做异步操作 */
-		console.log("http.interceptors.request.use:")
 		let accessToken = storage.getAccessToken();
-		console.log("accessToken:", accessToken)
 		if (accessToken) {
-			console.log("accessToken::yes...")
 			/**
 			 * 使用JWT解析
 			 * 小于当前时间将当前token清除
 			 */
-			console.log("11.....")
-			console.log("config.getTask:", config)
 			const decodeJwt = jwt(accessToken);
-			console.log("12.....")
 			const timing = new Date().getTime() / 1000
 			if (decodeJwt.exp <= timing) {
 				accessToken = ""
 				storage.setAccessToken('')
 			}
-			console.log("13.....")
 			const nonce = Foundation.randomString(6);
 			const timestamp = parseInt(new Date().getTime() / 1000);
 			const sign = md5(nonce + timestamp + accessToken);
@@ -109,7 +101,6 @@ http.interceptors.request.use(
 				sign,
 			};
 			let params = config.params || {};
-			console.log("14.....")
 			params = {
 				...params,
 				..._params
@@ -117,18 +108,13 @@ http.interceptors.request.use(
 
 			config.params = params;
 			config.header.accessToken = accessToken;
-			console.log("1.....")
 
 		}
-		console.log("2..........")
 		createUuid();
-		console.log("3.......")
 		config.header = {
 			...config.header,
 			uuid: storage.getUuid()
 		};
-		console.log("4.....")
-		console.log("uuid:", config.header.uuid)
 		return config;
 	},
 	(config) => {
@@ -144,7 +130,6 @@ let requests = [];
 // 必须使用异步函数，注意
 http.interceptors.response.use(
 	async (response) => {
-		console.log("http.interceptors.response.use:")
 		isNavigateTo = false
 		/* 请求之后拦截器。可以使用async await 做异步操作  */
 		// token存在并且token过期
@@ -154,12 +139,12 @@ http.interceptors.response.use(
 		// }
 		uni.showLoading() ? uni.hideLoading() : ''
 		let token = storage.getAccessToken();
+		console.log("response:", response)
 		if (
 			(token && response.statusCode === 403) ||
 			response.data.status === 403
 		) {
 			if (!isRefreshing) {
-				console.log('旧token', token)
 				isRefreshing = true;
 				storage.setAccessToken('')
 				let oldRefreshToken = storage.getRefreshToken();
@@ -209,7 +194,7 @@ http.interceptors.response.use(
 
 			// 如果当前状态码为正常但是success为不正常时
 		} else if (
-			(response.statusCode == 200 && !response.data.success) ||
+			(response.statusCode == 200 && response.data.code != 200) ||
 			response.statusCode == 400
 		) {
 			if (response.data.message) {
