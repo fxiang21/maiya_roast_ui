@@ -21,7 +21,7 @@
       <view class="stats-card">
         <view class="overview-stats">
           <view class="stat-item">
-            <text class="stat-value">{{ getStatValue(statsData.complaint_length) }}</text>
+            <text class="stat-value">{{ getStatValue(statsData.statistics.complaint_length) }}</text>
             <text class="stat-label">吐槽字数</text>
           </view>
           <view class="stat-item">
@@ -35,7 +35,7 @@
         </view>
         
         <!-- 时间序列图 -->
-        <view class="chart-wrapper">
+        <!-- <view class="chart-wrapper">
           <view class="chart-title">字数趋势</view>
           <qiun-data-charts 
             ref="timeSeriesChart"
@@ -51,7 +51,7 @@
             @complete="onChartComplete"
             @error="(e) => console.error('时序图渲染错误：', e)"
           />
-        </view>
+        </view> -->
 
         <!-- 情感气泡图 -->
         <view class="chart-section">
@@ -218,7 +218,14 @@ export default {
       bubbleChart: null,
       animationTimer: null,
       lastUpdate: 0,
-      debugInfo: '加载中...'
+      debugInfo: '加载中...',
+      currentRequests: [],
+      autoRefreshTimer: null,
+      _initialized: false,
+      _statValueCache: {}, // 添加缓存对象
+      _requestLock: false,
+      _requestLockTimer: null,
+      _initializingBubblePromise: null,
     }
   },
 
@@ -227,19 +234,24 @@ export default {
   },
 
   async mounted() {
-    console.log('stats mounted')
-    await this.initDynamicBubbles()
-    await this.loadAllStats()  // 加载所有统计数据
+    console.log('stats mounted');
+    
+    // 添加可见性检测
+    this.$nextTick(() => {
+      this.checkVisibility();
+    });
+    
+    // 添加定时刷新
+    this.autoRefreshTimer = setInterval(() => {
+      if (this.$parent?.currentTab === 'analysis' && !this.isLoading) {
+        this.loadAllStats();
+      }
+    }, 300000); // 5分钟自动刷新
   },
 
   computed: {
     statsData() {
-      if (!this.periodStatsData) return null
-      return {
-        complaint_length: this.periodStatsData.statistics.complaint_length,
-        user_stats: this.periodStatsData.user_stats,
-        statistics: this.periodStatsData.statistics
-      }
+      return this.periodStatsData || null
     },
 
     // 获取点赞数
@@ -251,12 +263,14 @@ export default {
     
     // 获取评论数
     getCommentsCount() {
+      console.log('getCommentsCount被调用')
       if (!this.statsData || !this.statsData.user_stats) return 0
       return this.statsData.user_stats.comments_count || 0
     },
 
     // 获取目标统计数据
     getTargetStats() {
+      console.log('getTargetStats被调用')
       if (!this.statsData || !this.statsData.statistics || !this.statsData.statistics.target) {
         return {}
       }
@@ -264,35 +278,61 @@ export default {
     },
 
     getEmotionSummary() {
-      const emotions = this.periodStatsData?.statistics?.emotion
-      if (!emotions) return '暂无数据'
-      
-      let positive = 0
-      let negative = 0
-      let neutral = 0
+      console.log('getEmotionSummary被调用')
+      const emotions = this.periodStatsData?.statistics?.emotion;
+      if (!emotions) return '暂无情绪数据';
 
+      // 分类统计
+      let positive = 0, negative = 0, neutral = 0;
+      const emotionGroups = {
+        positive: ['快乐', '期待', '信任', '爱', '骄傲', '希望', '兴奋', '满足'],
+        negative: ['悲伤', '愤怒', '恐惧', '厌恶', '焦虑', '失望', '嫉妒', '羞愧', '内疚', '孤独'],
+        neutral: ['惊讶', '平静', '好奇', '淡定', '困惑']
+      };
+
+      // 计算各分类总和
       Object.entries(emotions).forEach(([emotion, value]) => {
-        if (['快乐', '期待', '信任', '爱'].includes(emotion)) {
-          positive += value
-        } else if (['悲伤', '愤怒', '恐惧', '厌恶'].includes(emotion)) {
-          negative += value
+        if (emotionGroups.positive.includes(emotion)) {
+          positive += value;
+        } else if (emotionGroups.negative.includes(emotion)) {
+          negative += value;
         } else {
-          neutral += value
+          neutral += value;
         }
-      })
+      });
 
-      if (positive > 50) {
-        return `积极情绪占了${Math.round(positive)}%，说明你最近状态不错！`
-      } else if (negative > 50) {
-        return `消极情绪占了${Math.round(negative)}%，要多关注自己的心情哦`
+      // 计算总情绪数（防止除零）
+      const total = positive + negative + neutral;
+      if (total === 0) return '暂无有效情绪数据';
+
+      // 计算百分比
+      const positivePercent = (positive / total * 100).toFixed(1);
+      const negativePercent = (negative / total * 100).toFixed(1);
+      const neutralPercent = (neutral / total * 100).toFixed(1);
+
+      // 生成详细反馈
+      if (positivePercent >= 90) {
+        return `积极情绪高达${positivePercent}%！你最近的状态像小太阳一样灿烂，继续保持这份正能量吧！✨`;
+      } else if (positivePercent >= 70) {
+        return `积极情绪占${positivePercent}%，整体状态很不错！生活中充满小确幸呢～`;
+      } else if (positivePercent >= 50) {
+        return `积极情绪${positivePercent}%，心态比较积极向上，可以尝试记录更多开心时刻哦`;
+      } else if (negativePercent >= 50) {
+        if (negativePercent >= 70) {
+          return `检测到${negativePercent}%的消极情绪，最近是否遇到压力？建议找朋友聊聊或进行放松活动`;
+        } else {
+          return `消极情绪占${negativePercent}%，需要适当调节心情，试试深呼吸或写日记释放情绪`;
+        }
+      } else if (neutralPercent >= 60) {
+        return `中性情绪${neutralPercent}%，保持平和心态的同时，可以多尝试些新鲜事物增添生活趣味`;
       } else {
-        return `中性情绪占主导，保持平和心态很重要`
+        return `情绪分布较均衡：积极${positivePercent}% / 中性${neutralPercent}% / 消极${negativePercent}%，保持这种健康的心态状态吧`;
       }
     },
 
     // 时序图数据
     timeSeriesChartData() {
-      console.log('timeSeriesChartData computed 被触发')
+      console.log('timeSeriesChartData computed 被触发1')
       
       if (!this.timeSeriesData?.statistics) {
         return {
@@ -353,17 +393,30 @@ export default {
         }]
       }
     },
-
-    // 获取情感统计数据（用于气泡图）
-    getEmotionStats() {
-      return this.periodStatsData?.statistics?.emotion || null
-    }
   },
 
   methods: {
-    // 获取统计值
+    // 优化 getStatValue 方法，添加缓存
     getStatValue(value) {
-      return value || 0
+      // 使用简单的缓存机制
+      const cacheKey = `stat_${value}`;
+      if (this._statValueCache[cacheKey] !== undefined) {
+        return this._statValueCache[cacheKey];
+      }
+      
+      // 只在调试模式下打印日志
+      if (process.env.NODE_ENV === 'development') {
+        console.log('getStatValue被调用', value);
+      }
+      
+      const result = value || 0;
+      this._statValueCache[cacheKey] = result;
+      return result;
+    },
+    
+    // 在数据更新时清除缓存
+    clearStatValueCache() {
+      this._statValueCache = {};
     },
 
     // 获取气泡的不规则圆形效果
@@ -490,55 +543,407 @@ export default {
       return Math.min(maxSize, Math.max(baseSize, size))
     },
 
-    // 加载所有统计数据
-    async loadAllStats() {
-      this.isLoading = true
+    // 修改后的周期切换方法
+    async changePeriod(period) {
+      if (this.currentPeriod === period) return;
       
-      try {
-        // 并行加载数据
-        const [timeSeriesRes, periodStatsRes] = await Promise.all([
-          new Promise((resolve, reject) => {
-            getEmotionStats(
-              this.currentPeriod,
-              (res) => resolve(res),
-              (error) => reject(error)
-            )
-          }),
-          new Promise((resolve, reject) => {
-            getPeriodEmotionStats(
-              this.currentPeriod,
-              (res) => resolve(res),
-              (error) => reject(error)
-            )
-          })
-        ])
-        
+      // 中止所有进行中的请求
+      this.abortAllRequests();
+      this.stopAnimation();
 
-        console.log('时序数据返回：', timeSeriesRes)
-        console.log('周期统计数据返回：', periodStatsRes)
+      this.currentPeriod = period;
+      this.loadAllStats();
+    },
 
-        this.timeSeriesData = timeSeriesRes
-        this.periodStatsData = periodStatsRes.data
+    abortAllRequests() {
+      this.currentRequests.forEach(task => {
+        if (task && typeof task.abort === 'function') {
+          task.abort();
+        }
+      });
+      this.currentRequests = [];
+    },
 
-        // 数据加载完成后更新气泡
-        this.$nextTick(() => {
-          this.updateBubbles()
-        })
-      } catch (error) {
-        console.error('加载数据失败：', error)
-        this.debugInfo = '加载数据失败，请稍后重试。'
-      } finally {
-        this.isLoading = false
+    // 优化 initAnalysis 方法，确保组件可见时立即加载数据
+    initAnalysis() {
+      console.log('统一初始化分析页面');
+      
+      // 无论是否已初始化，都尝试加载数据
+      // 避免重复初始化图表
+      const shouldInitBubbles = !this.bubbleChart;
+      
+      // 标记为已初始化
+      this._initialized = true;
+      
+      // 使用 nextTick 确保 DOM 已渲染
+      this.$nextTick(async () => {
+        try {
+          // 先初始化图表容器（如果需要）
+          if (shouldInitBubbles) {
+            await this.initDynamicBubbles(true);
+          }
+          
+          // 使用请求锁定机制加载数据
+          this.loadAllStatsWithLock();
+          
+          console.log('分析页面初始化完成');
+        } catch (error) {
+          console.error('初始化分析页面失败:', error);
+          this.debugInfo = '初始化失败，请重试';
+        }
+      });
+    },
+
+    // 添加带锁定机制的数据加载方法
+    loadAllStatsWithLock() {
+      // 如果锁定中，跳过请求
+      if (this._requestLock) {
+        console.log('请求已锁定，跳过重复请求');
+        return;
+      }
+      
+      // 设置锁定
+      this._requestLock = true;
+      
+      // 清除之前的定时器
+      if (this._requestLockTimer) {
+        clearTimeout(this._requestLockTimer);
+      }
+      
+      // 执行数据加载
+      this.loadAllStats();
+      
+      // 设置锁定释放定时器（1秒后释放锁定）
+      this._requestLockTimer = setTimeout(() => {
+        this._requestLock = false;
+      }, 1000);
+    },
+
+    // 修改 onShow 生命周期钩子
+    onShow() {
+      console.log('stats onShow');
+      if (this._initialized && this.$parent?.currentTab === 'analysis' && !this.periodStatsData) {
+        // 只在没有数据时才加载
+        this.loadAllStatsWithLock();
       }
     },
 
-    // 切换周期
-    changePeriod(period) {
-      this.currentPeriod = period
-      this.loadAllStats()
+    // 改进 initDynamicBubbles 方法，增强稳定性和可靠性
+    initDynamicBubbles(forceReset = false) {
+      // 添加防重复初始化逻辑
+      if (this.bubbleChart && !forceReset) {
+        console.log('气泡图已初始化，跳过')
+        return Promise.resolve(this.bubbleChart)
+      }
+      
+      // 如果正在初始化中，返回现有的promise
+      if (this._initializingBubblePromise && !forceReset) {
+        console.log('气泡图正在初始化中，返回现有promise')
+        return this._initializingBubblePromise
+      }
+      
+      console.log('initDynamicBubbles被调用')
+      
+      // 创建初始化Promise并保存引用
+      this._initializingBubblePromise = new Promise((resolve, reject) => {
+        const attemptInit = (retryCount = 0) => {
+          if (retryCount > 5) {
+            console.error('气泡图初始化失败，超过最大重试次数')
+            reject(new Error('初始化失败，超过最大重试次数'))
+            this._initializingBubblePromise = null
+            return
+          }
+          
+          // 确保在DOM渲染完成后执行
+          this.$nextTick(() => {
+            const query = uni.createSelectorQuery().in(this)
+            query.select('.emotion-bubbles-wrapper')
+              .boundingClientRect(data => {
+                if (data && data.width && data.height && data.width > 0 && data.height > 0) {
+                  // 这里 data.width 和 data.height 为 px 单位
+                  try {
+                    uni.getSystemInfo({
+                      success: (res) => {
+                        const designWidth = 750;
+                        const scaleFactor = designWidth / res.windowWidth;
+                        // 转换成 rpx 后的尺寸
+                        this.containerWidth = data.width * scaleFactor;
+                        this.containerHeight = data.height * scaleFactor;
+            
+                        // 初始化气泡图时传入 scaleFactor
+                        this.bubbleChart = new DynamicBubbleChart({
+                          width: this.containerWidth,
+                          height: this.containerHeight,
+                          minSize: 60,
+                          maxSize: 180,
+                          maxSpeed: 1.2,
+                          scaleFactor: 1 // 此处在 DynamicBubbleChart 里已调用转换，所以传入1即可
+                        });
+            
+                        console.log('气泡图初始化成功，容器尺寸:', {
+                          width: this.containerWidth,
+                          height: this.containerHeight
+                        });
+                        
+                        // 清除初始化Promise引用
+                        this._initializingBubblePromise = null
+                        
+                        // 如果有数据，立即更新气泡
+                        if (this.periodStatsData?.statistics?.emotion) {
+                          this.updateBubbles();
+                        }
+                        
+                        resolve(this.bubbleChart);
+                      },
+                      fail: (err) => {
+                        console.error('获取系统信息失败:', err);
+                        // 清除初始化Promise引用
+                        this._initializingBubblePromise = null
+                        reject(err);
+                      }
+                    });
+                  } catch (error) {
+                    console.error('初始化气泡图出错:', error);
+                    this._initializingBubblePromise = null
+                    reject(error);
+                  }
+                } else {
+                  console.warn(`未找到容器元素或容器尺寸为0 (尝试 ${retryCount+1}/6):`, data);
+                  // 延迟重试，每次增加延迟时间
+                  setTimeout(() => {
+                    attemptInit(retryCount + 1);
+                  }, 300 * (retryCount + 1));
+                }
+              }).exec();
+          });
+        };
+        
+        // 开始初始化尝试
+        attemptInit();
+      });
+      
+      return this._initializingBubblePromise;
+    },
+
+    // 改进updateBubbles方法，增加更多检查
+    updateBubbles() {
+      if (!this.bubbleChart) {
+        console.warn('无法更新气泡: 图表未初始化');
+        // 尝试初始化图表
+        this.initDynamicBubbles(true).then(() => {
+          this.updateBubbles();
+        });
+        return;
+      }
+      
+      if (!this.periodStatsData || !this.periodStatsData.statistics || !this.periodStatsData.statistics.emotion) {
+        console.warn('无法更新气泡: 无数据或数据格式不正确', this.periodStatsData);
+        return;
+      }
+      
+      console.log('更新气泡，数据:', this.periodStatsData.statistics.emotion);
+      try {
+        this.dynamicBubbles = this.bubbleChart.generateBubbles(this.periodStatsData.statistics.emotion);
+        // 更新后立即开始动画
+        this.startAnimation();
+      } catch (error) {
+        console.error('生成气泡时出错:', error);
+      }
+    },
+
+    startAnimation() {
+      if (this.animationTimer) {
+        clearTimeout(this.animationTimer)
+        this.animationTimer = null
+      }
+
+      let isStable = false
+      const stabilityThreshold = 0.1
+      const maxStableFrames = 60
+      let stableFrameCount = 0
+
+      const checkStability = () => {
+        const movingBubbles = this.dynamicBubbles.filter(b => 
+          Math.abs(b.vx) > stabilityThreshold || 
+          Math.abs(b.vy) > stabilityThreshold
+        )
+        return movingBubbles.length === 0
+      }
+
+      const animate = () => {
+        if (!this.bubbleChart || isStable) return
+
+        const now = Date.now()
+        if (!this.lastUpdate) this.lastUpdate = now
+        const deltaTime = now - this.lastUpdate
+        
+        if (deltaTime > 16) {
+          try {
+            this.bubbleChart.updatePositions()
+            
+            // 添加速度衰减
+            this.dynamicBubbles.forEach(b => {
+              b.vx *= 0.98
+              b.vy *= 0.98
+            })
+
+            // 更新视图
+            this.$set(this, 'dynamicBubbles', [...this.bubbleChart.bubbles])
+            this.lastUpdate = now
+
+            // 稳定性检测
+            if (checkStability()) {
+              stableFrameCount++
+              if (stableFrameCount >= maxStableFrames) {
+                isStable = true
+                console.log('动画已稳定，停止更新')
+                return
+              }
+            } else {
+              stableFrameCount = 0
+            }
+          } catch (e) {
+            console.error('动画更新异常：', e)
+            this.stopAnimation()
+            return
+          }
+        }
+        
+        // 改用 setTimeout 兼容小程序环境
+        this.animationTimer = setTimeout(animate, 16)
+      }
+      
+      animate()
+    },
+
+    stopAnimation() {
+      if (this.animationTimer) {
+        clearTimeout(this.animationTimer)
+        this.animationTimer = null
+      }
+    },
+
+    onChartComplete() {
+      console.log('图表渲染完成')
+    },
+
+    // 新增颜色计算方法
+    getContrastColor(emotion) {
+      const gradient = this.getBubbleGradient(emotion);
+      // 从渐变中提取主色
+      const mainColor = gradient.match(/rgba?\([^)]+\)/)?.[0] || '#FFFFFF';
+      // 计算亮度值
+      const rgb = mainColor.match(/\d+/g);
+      const brightness = (rgb[0] * 299 + rgb[1] * 587 + rgb[2] * 114) / 1000;
+      return brightness > 150 ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.9)';
+    },
+
+    // 添加 loadStats 方法
+    loadStats() {
+      console.log('loadStats被调用')
+      // 重新加载数据
+      this.initDynamicBubbles()
+      // 如果有其他数据加载逻辑，也放在这里
+    },
+
+    // 修改 loadAllStats 方法，确保数据加载和气泡更新的正确顺序
+    async loadAllStats() {
+      // 如果已经在加载中，则跳过
+      if (this.isLoading) {
+        console.log('数据正在加载中，跳过重复请求');
+        return;
+      }
+      
+      this.isLoading = true;
+      this.debugInfo = '加载中...';
+      
+      try {
+        this.abortAllRequests(); // 清除旧请求
+        this.clearStatValueCache(); // 清除缓存
+        
+        // 使用 Promise.all 并发请求数据
+        const [timeSeriesRes, periodStatsRes] = await Promise.all([
+          this.fetchEmotionStats(this.currentPeriod),
+          this.fetchPeriodStats(this.currentPeriod)
+        ]);
+        
+        console.log('数据加载完成:', {
+          timeSeriesData: timeSeriesRes,
+          periodStatsData: periodStatsRes.data
+        });
+        
+        // 检查数据有效性
+        if (!periodStatsRes.data || !periodStatsRes.data.statistics) {
+          console.warn('加载的数据格式不正确:', periodStatsRes);
+          this.debugInfo = '数据格式不正确，请重试';
+          this.isLoading = false;
+          return;
+        }
+        
+        // 先更新数据
+        this.timeSeriesData = timeSeriesRes;
+        this.periodStatsData = periodStatsRes.data;
+        this.chartKey++; // 强制刷新图表
+        
+        // 确保气泡图已初始化，然后更新气泡
+        try {
+          // 如果气泡图未初始化，先初始化
+          if (!this.bubbleChart) {
+            await this.initDynamicBubbles(true);
+          }
+          
+          // 更新气泡
+          this.updateBubbles();
+        } catch (error) {
+          console.error('更新气泡失败:', error);
+        }
+        
+        // 最后清除加载状态
+        this.isLoading = false;
+        this.debugInfo = '';
+      } catch (error) {
+        console.error('加载统计数据失败:', error);
+        this.isLoading = false;
+        this.debugInfo = '加载失败，请重试';
+      }
+    },
+
+    fetchEmotionStats(period) {
+      return new Promise((resolve, reject) => {
+        const requestTask = getEmotionStats(
+          period,
+          (res) => {
+            this.currentRequests = this.currentRequests.filter(t => t !== requestTask);
+            resolve(res);
+          },
+          (err) => {
+            this.currentRequests = this.currentRequests.filter(t => t !== requestTask);
+            reject(err);
+          }
+        );
+        this.currentRequests.push(requestTask);
+      });
+    },
+
+    fetchPeriodStats(period) {
+      return new Promise((resolve, reject) => {
+        const requestTask = getPeriodEmotionStats(
+          period,
+          (res) => {
+            this.currentRequests = this.currentRequests.filter(t => t !== requestTask);
+            resolve(res);
+          },
+          (err) => {
+            this.currentRequests = this.currentRequests.filter(t => t !== requestTask);
+            reject(err);
+          }
+        );
+        this.currentRequests.push(requestTask);
+      });
     },
 
     initSize() {
+      console.log('initSize被调用')
       uni.getSystemInfo({
         success: (res) => {
           this.cWidth = res.windowWidth - 40 // 考虑padding
@@ -601,99 +1006,23 @@ export default {
       }
     },
 
-    // 初始化动态气泡
-    initDynamicBubbles() {
-      const query = uni.createSelectorQuery().in(this)
-      query.select('.emotion-bubbles-wrapper')
-        .boundingClientRect(data => {
-          if (data) {
-            console.log('容器尺寸:', data.width, data.height)
-            this.containerWidth = data.width || 300
-            this.containerHeight = data.height || 450
-            
-            // 初始化气泡图
-            this.bubbleChart = new DynamicBubbleChart({
-              width: this.containerWidth,
-              height: this.containerHeight,
-              minSize: 60,
-              maxSize: 180,
-              maxSpeed: 1.2
-            })
-
-            // 生成气泡并开始动画
-            this.$nextTick(() => {
-              this.updateBubbles()
-              this.startAnimation()
-            })
+    // 修改 checkVisibility 方法
+    checkVisibility() {
+      const query = uni.createSelectorQuery().in(this);
+      query.select('.stats-container').boundingClientRect(data => {
+        const isVisible = data && data.width > 0 && data.height > 0;
+        console.log('分析页面可见性:', isVisible);
+        
+        if (isVisible) {
+          // 如果组件可见，则初始化并加载数据
+          if (!this._initialized) {
+            this.initAnalysis();
+          } else if (!this.periodStatsData && !this._requestLock) {
+            // 如果已初始化但没有数据且未锁定，则加载数据
+            this.loadAllStatsWithLock();
           }
-        }).exec()
-    },
-
-    updateBubbles() {
-      if (!this.bubbleChart || !this.periodStatsData) {
-        console.log('无法更新气泡:', !this.bubbleChart ? '图表未初始化' : '无数据')
-        return
-      }
-      console.log('更新气泡，数据:', this.periodStatsData)
-      this.dynamicBubbles = this.bubbleChart.generateBubbles(this.periodStatsData.statistics.emotion)
-    },
-
-    startAnimation() {
-      if (this.animationTimer) {
-        clearTimeout(this.animationTimer)
-      }
-
-      const animate = () => {
-        if (!this.bubbleChart) return
-        
-        const now = Date.now()
-        if (!this.lastUpdate) this.lastUpdate = now
-        const deltaTime = now - this.lastUpdate
-        
-        if (deltaTime > 16) {
-          this.bubbleChart.updatePositions()
-          // 使用 uni-app 支持的数组更新方式
-          const newBubbles = this.bubbleChart.bubbles.map(bubble => ({...bubble}))
-          this.$set(this, 'dynamicBubbles', newBubbles)
-          this.lastUpdate = now
         }
-        
-        this.animationTimer = setTimeout(() => {
-          animate()
-        }, 16)
-      }
-      
-      animate()
-    },
-
-    stopAnimation() {
-      if (this.animationTimer) {
-        clearTimeout(this.animationTimer)
-        this.animationTimer = null
-      }
-    },
-
-    onChartComplete() {
-      console.log('图表渲染完成')
-    },
-
-    // 新增颜色计算方法
-    getContrastColor(emotion) {
-      const gradient = this.getBubbleGradient(emotion);
-      // 从渐变中提取主色
-      const mainColor = gradient.match(/rgba?\([^)]+\)/)?.[0] || '#FFFFFF';
-      // 计算亮度值
-      const rgb = mainColor.match(/\d+/g);
-      const brightness = (rgb[0] * 299 + rgb[1] * 587 + rgb[2] * 114) / 1000;
-      return brightness > 150 ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.9)';
-    },
-
-    // 添加 loadStats 方法
-    loadStats() {
-      console.log('loadStats被调用')
-      // 重新加载数据
-      this.initDynamicBubbles()
-      // 如果有其他数据加载逻辑，也放在这里
+      }).exec();
     }
   },
 
@@ -708,41 +1037,53 @@ export default {
     },
     periodStatsData: {
       handler(newVal) {
-        if (newVal?.data?.statistics?.emotion) {
-          this.updateBubbles()
-        }
+        if (!newVal) return
+        
+        this.$nextTick(() => {
+          // 批量处理所有依赖于periodStatsData的更新
+          this.updateCharts()
+          if (newVal?.statistics?.emotion) {
+            this.updateBubbles()
+          }
+        })
       },
-      deep: true
-    },
-    getEmotionStats: {
-      handler(newVal) {
-        if (newVal) {
-          this.updateBubbles()
-        }
-      },
-      immediate: true,
       deep: true
     },
     
     // 监听容器尺寸变化
     containerWidth(newVal) {
       if (newVal > 0 && this.bubbleChart) {
-        this.bubbleChart.options.width = newVal
-        this.bubbleChart.options.height = newVal
-        this.updateBubbles()
+        this.bubbleChart.options.width = newVal;
+        this.bubbleChart.options.height = this.containerHeight;
+        this.updateBubbles();
+      }
+    },
+
+    // 添加路由变化监听
+    '$route.query.period'(newPeriod) {
+      if (newPeriod && this.periods.includes(newPeriod)) {
+        this.changePeriod(newPeriod);
+      }
+    },
+
+    // 优化currentPeriod监听器
+    currentPeriod: {
+      immediate: false, // 改为false，避免组件创建时就触发
+      handler(newVal, oldVal) {
+        if (newVal !== oldVal) { // 只在真正变化时触发
+          this.loadAllStats()
+        }
       }
     }
   },
 
   onReady() {
     console.log('组件已就绪')
-    setTimeout(() => {
-      this.initDynamicBubbles()
-    }, 100) // 延迟初始化以确保容器已渲染
   },
 
   beforeDestroy() {
     this.stopAnimation()
+    clearInterval(this.autoRefreshTimer)
   }
 }
 </script>

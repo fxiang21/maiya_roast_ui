@@ -239,7 +239,8 @@
           "倾诉是一种治愈，书写是一种释放",
           "记录下此刻的心情吧",
           "让黑洞听听你的故事"
-        ]
+        ],
+        currentRequest: null
       };
     },
     computed: {
@@ -280,6 +281,7 @@
     methods: {
       // 初始化页面
       init() {
+        this.abortRequests();
         this.page = 1
         this.historyData = []
         this.loadMoreStatus = "more"
@@ -489,6 +491,12 @@
         uni.switchTab({
           url: '/pages/tabbar/emotion/home'
         })
+      },
+      abortRequests() {
+        if (this.currentRequest) {
+          this.currentRequest.abort();
+          this.currentRequest = null;
+        }
       }
     },
   };

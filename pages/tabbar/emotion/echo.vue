@@ -56,7 +56,8 @@
         statusBarHeight: 0,
         currentTab: 'history',
         tabLineLeft: '0%',
-        isTabSwitching: false
+        isTabSwitching: false,
+        _dataInitialized: false
       }
     },
     
@@ -70,36 +71,66 @@
     
     onShow() {
       console.log('echo.vue onShow')
-      // 每次显示页面时都刷新数据
       this.$nextTick(() => {
-        this.initCurrentTabData()
+        // 根据当前标签初始化数据
+        this.initCurrentTabData(true)
+        this._dataInitialized = true
       })
     },
     
+    onHide() {
+      if (this.$refs.history?.abortRequests) {
+        this.$refs.history.abortRequests();
+      }
+      if (this.$refs.stats?.abortAllRequests) {
+        this.$refs.stats.abortAllRequests();
+      }
+    },
+    
     methods: {
-      initCurrentTabData() {
+      initCurrentTabData(forceRefresh = false) {
         console.log('初始化数据，当前标签：', this.currentTab)
         this.$nextTick(() => {
           if (this.currentTab === 'history') {
-            console.log('开始加载历史数据')
-            if (this.$refs.history && typeof this.$refs.history.init === 'function') {
-              this.$refs.history.init()
-            }
+            this.initHistoryData();
           } else if (this.currentTab === 'analysis') {
-            console.log('开始加载统计数据')
-            try {
-              if (this.$refs.stats) {
-                this.$refs.stats.loadStats()
-              } else {
-                console.warn('stats组件未找到')
-              }
-            } catch (error) {
-              console.error('加载统计数据失败:', error)
-            }
+            this.initAnalysisData();
           }
         })
       },
       
+      initHistoryData() {
+        console.log('开始加载历史数据')
+        if (this.$refs.history && typeof this.$refs.history.init === 'function') {
+          this.$refs.history.abortRequests();
+          this.$refs.history.init();
+        }
+      },
+      
+      initAnalysisData() {
+        console.log('开始加载统计数据');
+        try {
+          if (this.$refs.stats) {
+            this.$refs.stats.initAnalysis();
+            // 检查是否已有数据，避免重复加载
+            // if (!this.$refs.stats.periodStatsData) {
+            //   this.$refs.stats.initAnalysis();
+            // } else {
+            //   console.log('分析数据已存在，跳过加载');
+            // }
+          } else {
+            console.warn('stats组件未找到');
+            // 延迟重试
+            setTimeout(() => {
+              if (this.$refs.stats && !this.$refs.stats.periodStatsData) {
+                this.$refs.stats.initAnalysis();
+              }
+            }, 300);
+          }
+        } catch (error) {
+          console.error('加载统计数据失败:', error);
+        }
+      },
       switchTab(tab) {
         if (this.currentTab === tab || this.isTabSwitching) return
         
@@ -107,14 +138,17 @@
         this.currentTab = tab
         this.tabLineLeft = tab === 'history' ? '0%' : '50%'
         
-        // 切换后初始化数据
-        this.$nextTick(() => {
-          this.initCurrentTabData()
-        })
-
-        setTimeout(() => {
+        // 添加组件可见性变化处理
+        this.$nextTick(async () => {
+          if (tab === 'analysis') {
+            await this.$nextTick()
+            // 只调用一个方法，避免重复加载数据
+            this.initAnalysisData()
+          } else {
+            this.initHistoryData()
+          }
           this.isTabSwitching = false
-        }, 300)
+        })
       }
     }
   }

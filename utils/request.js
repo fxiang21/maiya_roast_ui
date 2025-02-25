@@ -139,7 +139,6 @@ http.interceptors.response.use(
 		// }
 		uni.showLoading() ? uni.hideLoading() : ''
 		let token = storage.getAccessToken();
-		console.log("response:", response)
 		if (
 			(token && response.statusCode === 403) ||
 			response.data.status === 403

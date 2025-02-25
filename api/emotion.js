@@ -260,6 +260,7 @@ export function getEmotionStats(period, successCallback, failCallback) {
   } else if (period === 'year' || period === 'yearly') {
     period = 'monthly'
   }
+  
 
   return http.request({
     url: `speech/emotion/statistics`,
