@@ -159,11 +159,11 @@ export default {
   data() {
     return {
       periods: [
-        { label: '周', value: 'week' },
-        { label: '月', value: 'month' },
-        { label: '年', value: 'year' }
+        { label: '周', value: 'weekly' },
+        { label: '月', value: 'monthly' },
+        { label: '年', value: 'yearly' }
       ],
-      currentPeriod: 'week',
+      currentPeriod: 'weekly',
       timeSeriesOpts: {
         padding: [15, 15, 0, 15],
         legend: { show: false },
