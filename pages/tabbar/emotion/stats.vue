@@ -106,38 +106,89 @@
         </view>
       </view>
 
-      <!-- 吐槽分类标题 -->
+      <!-- 分类统计标题 -->
       <text class="section-title">吐槽分类</text>
       
       <!-- 分类统计图 -->
-      <view class="chart-wrapper">
-        <view class="chart-title">分类统计</view>
-        <qiun-data-charts
-          :key="'categoryChart-' + chartKey"
-          type="column"
-          :opts="categoryOpts"
-          :chartData="categoryChartData"
-          :canvas2d="true"
-          canvasId="categoryChart"
-        />
+      <view class="stats-card">
+        <view class="chart-wrapper">
+          <view class="chart-title">分类统计</view>
+          <view class="category-chart">
+            <view v-for="(categoryData, category) in processedCategoryData" :key="category" class="category-item">
+              <view class="category-bars">
+                <view 
+                  v-if="categoryData.positive > 0"
+                  class="emotion-bar positive" 
+                  :style="{height: categoryData.positive_height + 'rpx'}" 
+                >
+                  <text class="bar-value">{{categoryData.positive}}</text>
+                </view>
+                
+                <view 
+                  v-if="categoryData.neutral > 0"
+                  class="emotion-bar neutral" 
+                  :style="{height: categoryData.neutral_height + 'rpx'}" 
+                >
+                  <text class="bar-value">{{categoryData.neutral}}</text>
+                </view>
+                
+                <view 
+                  v-if="categoryData.negative > 0"
+                  class="emotion-bar negative" 
+                  :style="{height: categoryData.negative_height + 'rpx'}" 
+                >
+                  <text class="bar-value">{{categoryData.negative}}</text>
+                </view>
+              </view>
+              <view class="category-name">{{category}}</view>
+            </view>
+            <view v-if="!Object.keys(processedCategoryData).length" class="empty-chart">
+              暂无分类数据
+            </view>
+          </view>
+          
+          <!-- 添加图例 -->
+          <view class="chart-legend">
+            <view class="legend-item">
+              <view class="legend-color positive"></view>
+              <text class="legend-text">积极</text>
+            </view>
+            <view class="legend-item">
+              <view class="legend-color neutral"></view>
+              <text class="legend-text">中性</text>
+            </view>
+            <view class="legend-item">
+              <view class="legend-color negative"></view>
+              <text class="legend-text">消极</text>
+            </view>
+          </view>
+        </view>
       </view>
 
       <!-- 关键词标题 -->
       <text class="section-title">吐槽关键词</text>
       
-      <!-- 关键词卡片 -->
+      <!-- 关键词卡片 - 修改为更好的词云图效果 -->
       <view class="stats-card">
-        <view class="keyword-cloud">
-          <view 
-            v-for="(count, word) in getTargetStats" 
-            :key="word"
-            class="keyword"
-            :style="{
-              fontSize: getKeywordSize(count) + 'rpx',
-              color: getKeywordColor(count)
-            }"
-          >
-            {{ word }}
+        <view class="keyword-cloud-container">
+          <view v-if="Object.keys(getTargetStats).length === 0" class="empty-chart">
+            暂无关键词数据
+          </view>
+          <view v-else class="keyword-cloud">
+            <view 
+              v-for="(item, index) in processedKeywords" 
+              :key="index"
+              class="keyword-tag"
+              :style="{
+                fontSize: item.size + 'rpx',
+                color: item.color,
+                left: item.x + 'rpx',
+                top: item.y + 'rpx',
+                transform: `rotate(${item.rotate}deg)`
+              }"
+            >
+              {{ item.word }}
+            </view>
           </view>
         </view>
       </view>
@@ -226,6 +277,7 @@ export default {
       _requestLock: false,
       _requestLockTimer: null,
       _initializingBubblePromise: null,
+      processedKeywords: [],
     }
   },
 
@@ -393,6 +445,95 @@ export default {
         }]
       }
     },
+
+    // 重写分类数据处理计算属性
+    processedCategoryData() {
+      if (!this.statsData || !this.statsData.statistics || !this.statsData.statistics.category) {
+        console.log('分类数据为空');
+        return {};
+      }
+      
+      const categoryData = this.statsData.statistics.category;
+      console.log('原始分类数据:', JSON.stringify(categoryData));
+      
+      const result = {};
+      
+      // 处理每个分类
+      Object.entries(categoryData).forEach(([category, emotions]) => {
+        if (!result[category]) {
+          result[category] = {
+            positive: 0,
+            neutral: 0,
+            negative: 0,
+            total: 0
+          };
+        }
+        
+        // 直接使用positive/negative/neutral键
+        if (typeof emotions === 'object' && emotions !== null) {
+          // 直接映射情绪分类
+          if ('positive' in emotions) {
+            result[category].positive = emotions.positive || 0;
+          }
+          if ('negative' in emotions) {
+            result[category].negative = emotions.negative || 0;
+          }
+          if ('neutral' in emotions) {
+            result[category].neutral = emotions.neutral || 0;
+          }
+          
+          // 计算总数
+          result[category].total = 
+            result[category].positive + 
+            result[category].negative + 
+            result[category].neutral;
+        } else {
+          console.warn(`分类 ${category} 的情绪数据格式不正确:`, emotions);
+        }
+      });
+      
+      console.log('处理后的分类数据:', JSON.stringify(result));
+      
+      // 寻找最大值用于缩放
+      let maxValue = 1;
+      Object.values(result).forEach(item => {
+        maxValue = Math.max(maxValue, item.positive, item.neutral, item.negative);
+      });
+      console.log('最大值:', maxValue);
+      
+      // 重新调整比例 - 限制最大高度
+      const maxHeight = 160; // 降低最大高度(rpx)，防止覆盖
+      const minHeight = 20;  // 最小高度(rpx)
+      
+      Object.values(result).forEach(item => {
+        // 确保有值的柱状图至少有最小高度，但不超过最大高度
+        item.positive_height = item.positive > 0 ? 
+          Math.max(minHeight, Math.min(maxHeight, Math.floor(item.positive / maxValue * maxHeight))) : 0;
+        
+        item.neutral_height = item.neutral > 0 ? 
+          Math.max(minHeight, Math.min(maxHeight, Math.floor(item.neutral / maxValue * maxHeight))) : 0;
+        
+        item.negative_height = item.negative > 0 ? 
+          Math.max(minHeight, Math.min(maxHeight, Math.floor(item.negative / maxValue * maxHeight))) : 0;
+      });
+      
+      console.log('最终渲染数据:', JSON.stringify(result));
+      return result;
+    },
+    
+    // 优化关键词相关计算属性
+    keywordMaxCount() {
+      if (!this.getTargetStats || Object.keys(this.getTargetStats).length === 0) {
+        return 1;
+      }
+      return Math.max(...Object.values(this.getTargetStats));
+    },
+    
+    // 计算关键词总数，用于调整显示效果
+    keywordTotalCount() {
+      if (!this.getTargetStats) return 0;
+      return Object.values(this.getTargetStats).reduce((sum, count) => sum + count, 0);
+    }
   },
 
   methods: {
@@ -898,6 +1039,11 @@ export default {
           console.error('更新气泡失败:', error);
         }
         
+        // 在数据更新后刷新词云布局
+        this.$nextTick(() => {
+          this.layoutKeywords();
+        });
+        
         // 最后清除加载状态
         this.isLoading = false;
         this.debugInfo = '';
@@ -970,40 +1116,167 @@ export default {
       console.log('图表触摸事件：', e)
     },
 
-    // 获取关键词大小
-    getKeywordSize(count) {
-      // 基础字号为24rpx，最大为48rpx
-      const baseSize = 24
-      const maxSize = 48
+    // 布局词云
+    layoutKeywords() {
+      // 先清空数组
+      this.processedKeywords = [];
       
-      // 获取所有count值中的最大值
-      const maxCount = Math.max(...Object.values(this.getTargetStats))
-      
-      // 根据当前count值相对于最大值的比例计算字号
-      const size = baseSize + (count / maxCount) * (maxSize - baseSize)
-      
-      // 确保字号在合理范围内
-      return Math.min(maxSize, Math.max(baseSize, size))
-    },
-
-    // 获取关键词颜色
-    getKeywordColor(count) {
-      // 获取所有count值中的最大值
-      const maxCount = Math.max(...Object.values(this.getTargetStats))
-      
-      // 计算当前count的热度（0-1之间）
-      const heat = count / maxCount
-      
-      // 根据热度返回不同的颜色
-      if (heat > 0.8) {
-        return '#FF6B6B' // 热门词
-      } else if (heat > 0.5) {
-        return '#FFB86C' // 较热门词
-      } else if (heat > 0.3) {
-        return '#8BE9FD' // 一般词
-      } else {
-        return '#6272A4' // 较冷门词
+      if (!this.getTargetStats || Object.keys(this.getTargetStats).length === 0) {
+        return;
       }
+      
+      // 获取容器尺寸
+      const containerWidth = 690; // 整个容器宽度，单位rpx
+      const containerHeight = 400; // 整个容器高度，单位rpx
+      const centerX = containerWidth / 2;
+      const centerY = containerHeight / 2;
+      
+      // 将对象转为数组，便于排序
+      const keywords = Object.entries(this.getTargetStats)
+        .map(([word, count]) => ({
+          word,
+          count,
+          size: this.getWordSize(count),
+          color: this.getWordColor(count),
+          rotate: Math.random() > 0.5 ? Math.random() * 30 : Math.random() * -30, // 随机旋转角度
+          placed: false,
+          width: 0, // 将在后面计算
+          height: 0 // 将在后面计算
+        }))
+        .sort((a, b) => b.count - a.count); // 按数量降序排序
+      
+      // 从中心点开始，螺旋向外放置
+      let angle = 0;
+      let radius = 0;
+      const radiusIncrement = 10;
+      const angleIncrement = 0.3;
+      const maxAttempts = 100; // 防止无限循环
+      
+      // 假设每个字大约占据的rpx宽度
+      const getWordDimensions = (word, fontSize) => {
+        // 粗略估计：中文字符宽度约等于字体大小，英文字符宽度约为字体大小的0.6倍
+        let width = 0;
+        for (let i = 0; i < word.length; i++) {
+          const char = word.charAt(i);
+          if (/[\u4e00-\u9fa5]/.test(char)) {
+            width += fontSize; // 中文字符
+          } else {
+            width += fontSize * 0.6; // 英文和其他字符
+          }
+        }
+        return {
+          width: width + 20, // 增加一些内边距
+          height: fontSize + 20 // 增加一些内边距
+        };
+      };
+      
+      // 检查位置是否合法（不与已放置的词重叠）
+      const isPositionValid = (x, y, width, height) => {
+        // 检查是否在容器内
+        if (x < 0 || x + width > containerWidth || y < 0 || y + height > containerHeight) {
+          return false;
+        }
+        
+        // 检查是否与其他词重叠
+        for (const keyword of this.processedKeywords) {
+          const kx = keyword.x;
+          const ky = keyword.y;
+          const kw = keyword.width;
+          const kh = keyword.height;
+          
+          // 简单的矩形碰撞检测
+          if (!(x > kx + kw || x + width < kx || y > ky + kh || y + height < ky)) {
+            return false;
+          }
+        }
+        
+        return true;
+      };
+      
+      // 按顺序放置词语
+      for (const keyword of keywords) {
+        const { width, height } = getWordDimensions(keyword.word, keyword.size);
+        keyword.width = width;
+        keyword.height = height;
+        
+        // 尝试找到一个位置
+        let attempts = 0;
+        let placed = false;
+        
+        // 重要的词（数量多的）尝试放在中心位置
+        if (keyword.count >= this.keywordMaxCount * 0.8) {
+          const x = centerX - width / 2;
+          const y = centerY - height / 2;
+          if (isPositionValid(x, y, width, height)) {
+            keyword.x = x;
+            keyword.y = y;
+            keyword.placed = true;
+            this.processedKeywords.push(keyword);
+            placed = true;
+          }
+        }
+        
+        if (!placed) {
+          // 螺旋方式尝试放置
+          while (attempts < maxAttempts && !placed) {
+            angle += angleIncrement;
+            radius += radiusIncrement / (Math.floor(angle / (2 * Math.PI)) + 1);
+            
+            const x = centerX + radius * Math.cos(angle) - width / 2;
+            const y = centerY + radius * Math.sin(angle) - height / 2;
+            
+            if (isPositionValid(x, y, width, height)) {
+              keyword.x = x;
+              keyword.y = y;
+              keyword.placed = true;
+              this.processedKeywords.push(keyword);
+              placed = true;
+            }
+            
+            attempts++;
+          }
+        }
+        
+        // 如果尝试多次仍无法放置，则忽略碰撞规则
+        if (!placed && keyword.count > 1) {
+          keyword.x = Math.random() * (containerWidth - width);
+          keyword.y = Math.random() * (containerHeight - height);
+          keyword.placed = true;
+          this.processedKeywords.push(keyword);
+        }
+      }
+    },
+    
+    // 获取词云中字的大小
+    getWordSize(count) {
+      const maxSize = 60; // 最大字体大小
+      const minSize = 24; // 最小字体大小
+      
+      if (count === this.keywordMaxCount) {
+        return maxSize;
+      }
+      
+      // 使用对数尺度使大小差异更明显
+      const ratio = Math.log(count + 1) / Math.log(this.keywordMaxCount + 1);
+      return Math.max(minSize, Math.round(minSize + ratio * (maxSize - minSize)));
+    },
+    
+    // 获取词云中字的颜色
+    getWordColor(count) {
+      const colorOptions = [
+        '#FF6B6B', // 红色 - 重要
+        '#FFB86C', // 橙色
+        '#8BE9FD', // 蓝色
+        '#BD93F9', // 紫色
+        '#6272A4'  // 灰蓝色 - 不重要
+      ];
+      
+      // 计算颜色索引，使用对数尺度
+      const maxIndex = colorOptions.length - 1;
+      const ratio = Math.log(count + 1) / Math.log(this.keywordMaxCount + 1);
+      const index = Math.floor((1 - ratio) * maxIndex);
+      
+      return colorOptions[Math.min(index, maxIndex)];
     },
 
     // 修改 checkVisibility 方法
@@ -1176,22 +1449,18 @@ export default {
 }
 
 .chart-wrapper {
-  margin: 20rpx 0;
+  width: 100%;
   padding: 20rpx;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 16rpx;
-  height: 400rpx;
-  
-  .chart-title {
-    color: rgba(255, 255, 255, 0.9);
-    font-size: 28rpx;
-    margin-bottom: 20rpx;
-  }
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden; /* 防止内容溢出 */
+}
 
-  :deep(.charts-box) {
-    width: 100% !important;
-    height: 100% !important;
-  }
+.chart-title {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 30rpx;
+  text-align: center;
 }
 
 .chart-section {
@@ -1301,5 +1570,155 @@ export default {
 :deep(canvas) {
   width: 100%;
   height: 100%;
+}
+
+// 分类统计图表样式
+.category-chart {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-start;
+  height: 280rpx; // 减小整体高度
+  width: 100%;
+  padding: 40rpx 0 20rpx 0; // 增加顶部内边距，为数值标签留出空间
+  box-sizing: border-box;
+  overflow-x: auto;
+}
+
+.category-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  min-width: 100rpx;
+  margin: 0 10rpx;
+}
+
+.category-name {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 24rpx;
+  font-weight: 500;
+  margin-top: 15rpx;
+  text-align: center;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.category-bars {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: 180rpx; // 减小高度
+  width: 100%;
+}
+
+.emotion-bar {
+  width: 30rpx;
+  margin: 0 4rpx;
+  border-radius: 6rpx 6rpx 0 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 20rpx;
+  box-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.1);
+  
+  &.positive {
+    background: linear-gradient(to top, #4CAF50, #81C784);
+  }
+  
+  &.neutral {
+    background: linear-gradient(to top, #42A5F5, #90CAF9);
+  }
+  
+  &.negative {
+    background: linear-gradient(to top, #FF5252, #FF8A80);
+  }
+  
+  .bar-value {
+    position: absolute;
+    top: -24rpx; // 增加与柱状图的距离
+    font-size: 20rpx;
+    color: rgba(255, 255, 255, 0.8);
+    background: rgba(0, 0, 0, 0.5); // 增加背景不透明度
+    padding: 2rpx 8rpx;
+    border-radius: 10rpx;
+    z-index: 2; // 确保显示在最上层
+  }
+}
+
+// 修改后的词云样式
+.keyword-cloud-container {
+  height: 400rpx;
+  width: 100%;
+  position: relative;
+}
+
+.keyword-cloud {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.keyword-tag {
+  position: absolute;
+  padding: 10rpx 16rpx;
+  background-color: rgba(255, 255, 255, 0.08);
+  border-radius: 30rpx;
+  white-space: nowrap;
+  text-align: center;
+  font-weight: 500;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.2);
+}
+
+.empty-chart {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200rpx;
+  width: 100%;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 26rpx;
+}
+
+// 添加图例样式
+.chart-legend {
+  display: flex;
+  justify-content: center;
+  margin-top: 10rpx;
+  padding: 10rpx 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  margin: 0 15rpx;
+}
+
+.legend-color {
+  width: 20rpx;
+  height: 20rpx;
+  border-radius: 4rpx;
+  margin-right: 6rpx;
+  
+  &.positive {
+    background: linear-gradient(to top, #4CAF50, #81C784);
+  }
+  
+  &.neutral {
+    background: linear-gradient(to top, #42A5F5, #90CAF9);
+  }
+  
+  &.negative {
+    background: linear-gradient(to top, #FF5252, #FF8A80);
+  }
+}
+
+.legend-text {
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.7);
 }
 </style>
