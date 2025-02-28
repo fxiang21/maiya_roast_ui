@@ -34,25 +34,6 @@
           </view>
         </view>
         
-        <!-- 时间序列图 -->
-        <!-- <view class="chart-wrapper">
-          <view class="chart-title">字数趋势</view>
-          <qiun-data-charts 
-            ref="timeSeriesChart"
-            :key="'timeSeriesChart-' + chartKey"
-            type="line"
-            :opts="timeSeriesOpts"
-            :chartData="timeSeriesChartData"
-            :canvas2d="true"
-            :canvasId="'timeSeriesChart-' + currentPeriod"
-            :ontouch="true"
-            :rotateLock="true"
-            @getIndex="(e) => console.log('时序图点击索引：', e)"
-            @complete="onChartComplete"
-            @error="(e) => console.error('时序图渲染错误：', e)"
-          />
-        </view> -->
-
         <!-- 情感气泡图 -->
         <view class="chart-section">
           <view class="emotion-bubbles-wrapper">
@@ -99,9 +80,9 @@
           </view>
           
           <!-- 新增提示文本 -->
-          <view class="chart-tip">
+          <view class="chart-tip" v-if="emotionTips && emotionTips.emotion">
             <text class="tip-icon">💡</text>
-            <text class="tip-text">{{ getEmotionSummary }}</text>
+            <text class="tip-text">{{ emotionTips.emotion }}</text>
           </view>
         </view>
       </view>
@@ -162,33 +143,49 @@
               <text class="legend-text">消极</text>
             </view>
           </view>
+          
+          <!-- 分类统计提示文本 -->
+          <view class="chart-tip" v-if="emotionTips && emotionTips.category">
+            <text class="tip-icon">💡</text>
+            <text class="tip-text">{{ emotionTips.category }}</text>
+          </view>
         </view>
       </view>
 
       <!-- 关键词标题 -->
       <text class="section-title">吐槽关键词</text>
       
-      <!-- 关键词卡片 - 修改为更好的词云图效果 -->
+      <!-- 关键词云图 -->
       <view class="stats-card">
-        <view class="keyword-cloud-container">
-          <view v-if="Object.keys(getTargetStats).length === 0" class="empty-chart">
-            暂无关键词数据
-          </view>
-          <view v-else class="keyword-cloud">
-            <view 
-              v-for="(item, index) in processedKeywords" 
-              :key="index"
-              class="keyword-tag"
-              :style="{
-                fontSize: item.size + 'rpx',
-                color: item.color,
-                left: item.x + 'rpx',
-                top: item.y + 'rpx',
-                transform: `rotate(${item.rotate}deg)`
-              }"
-            >
-              {{ item.word }}
+        <view class="chart-wrapper">
+          <view class="chart-title">关键词云</view>
+          <view class="keyword-cloud-container">
+            <view v-if="!processedKeywords.length" class="empty-chart">
+              暂无关键词数据
             </view>
+            <view v-else class="keyword-cloud">
+              <view 
+                v-for="(keyword, index) in processedKeywords" 
+                :key="index"
+                class="keyword-tag"
+                :style="{
+                  fontSize: keyword.size + 'rpx',
+                  color: keyword.color,
+                  left: keyword.x + 'rpx',
+                  top: keyword.y + 'rpx',
+                  transform: `rotate(${keyword.rotate}deg)`,
+                  opacity: keyword.opacity
+                }"
+              >
+                {{ keyword.word }}
+              </view>
+            </view>
+          </view>
+          
+          <!-- 关键词提示文本 -->
+          <view class="chart-tip" v-if="emotionTips && emotionTips.target">
+            <text class="tip-icon">💡</text>
+            <text class="tip-text">{{ emotionTips.target }}</text>
           </view>
         </view>
       </view>
@@ -201,7 +198,7 @@
 </template>
 
 <script>
-import { getEmotionStats, getPeriodEmotionStats } from '@/api/emotion.js'
+import { getEmotionStats, getPeriodEmotionStats, getEmotionTips } from '@/api/emotion.js'
 import DynamicBubbleChart from '@/utils/DynamicBubbleChart'
 
 export default {
@@ -278,6 +275,10 @@ export default {
       _requestLockTimer: null,
       _initializingBubblePromise: null,
       processedKeywords: [],
+      emotionTips: null,
+      tipTaskId: null,
+      tipRetryCount: 0,
+      tipMaxRetries: 5,
     }
   },
 
@@ -327,123 +328,6 @@ export default {
         return {}
       }
       return this.statsData.statistics.target
-    },
-
-    getEmotionSummary() {
-      console.log('getEmotionSummary被调用')
-      const emotions = this.periodStatsData?.statistics?.emotion;
-      if (!emotions) return '暂无情绪数据';
-
-      // 分类统计
-      let positive = 0, negative = 0, neutral = 0;
-      const emotionGroups = {
-        positive: ['快乐', '期待', '信任', '爱', '骄傲', '希望', '兴奋', '满足'],
-        negative: ['悲伤', '愤怒', '恐惧', '厌恶', '焦虑', '失望', '嫉妒', '羞愧', '内疚', '孤独'],
-        neutral: ['惊讶', '平静', '好奇', '淡定', '困惑']
-      };
-
-      // 计算各分类总和
-      Object.entries(emotions).forEach(([emotion, value]) => {
-        if (emotionGroups.positive.includes(emotion)) {
-          positive += value;
-        } else if (emotionGroups.negative.includes(emotion)) {
-          negative += value;
-        } else {
-          neutral += value;
-        }
-      });
-
-      // 计算总情绪数（防止除零）
-      const total = positive + negative + neutral;
-      if (total === 0) return '暂无有效情绪数据';
-
-      // 计算百分比
-      const positivePercent = (positive / total * 100).toFixed(1);
-      const negativePercent = (negative / total * 100).toFixed(1);
-      const neutralPercent = (neutral / total * 100).toFixed(1);
-
-      // 生成详细反馈
-      if (positivePercent >= 90) {
-        return `积极情绪高达${positivePercent}%！你最近的状态像小太阳一样灿烂，继续保持这份正能量吧！✨`;
-      } else if (positivePercent >= 70) {
-        return `积极情绪占${positivePercent}%，整体状态很不错！生活中充满小确幸呢～`;
-      } else if (positivePercent >= 50) {
-        return `积极情绪${positivePercent}%，心态比较积极向上，可以尝试记录更多开心时刻哦`;
-      } else if (negativePercent >= 50) {
-        if (negativePercent >= 70) {
-          return `检测到${negativePercent}%的消极情绪，最近是否遇到压力？建议找朋友聊聊或进行放松活动`;
-        } else {
-          return `消极情绪占${negativePercent}%，需要适当调节心情，试试深呼吸或写日记释放情绪`;
-        }
-      } else if (neutralPercent >= 60) {
-        return `中性情绪${neutralPercent}%，保持平和心态的同时，可以多尝试些新鲜事物增添生活趣味`;
-      } else {
-        return `情绪分布较均衡：积极${positivePercent}% / 中性${neutralPercent}% / 消极${negativePercent}%，保持这种健康的心态状态吧`;
-      }
-    },
-
-    // 时序图数据
-    timeSeriesChartData() {
-      console.log('timeSeriesChartData computed 被触发1')
-      
-      if (!this.timeSeriesData?.statistics) {
-        return {
-          categories: [],
-          series: []
-        }
-      }
-
-      const statistics = this.timeSeriesData.statistics
-      const dates = Object.keys(statistics).sort()
-      const values = dates.map(date => statistics[date].complaint_length || 0)
-
-      console.log('时序图最终数据：', {
-        categories: dates.map(d => d.slice(5)),
-        series: [{
-          name: '字数',
-          data: values
-        }]
-      })
-
-      return {
-        categories: dates.map(d => d.slice(5)), // 只保留月-日
-        series: [{
-          name: '字数',
-          data: values,
-          color: '#8B5CF6',
-          textColor: '#CCCCCC',  // 添加文字颜色
-          type: 'line',          // 明确指定类型
-          style: 'curve',        // 使用曲线样式
-          pointShape: 'circle'   // 数据点形状
-        }]
-      }
-    },
-
-    // 分类统计图数据
-    categoryChartData() {
-      if (!this.periodStatsData?.statistics?.category) {
-        return {
-          categories: [],
-          series: []
-        }
-      }
-
-      const categoryData = this.periodStatsData.statistics.category
-      const categories = Object.keys(categoryData)
-      const values = Object.values(categoryData)
-
-      console.log('分类统计数据：', {
-        categories,
-        values
-      })
-
-      return {
-        categories,
-        series: [{
-          name: '数量',
-          data: values
-        }]
-      }
     },
 
     // 重写分类数据处理计算属性
@@ -1003,15 +887,11 @@ export default {
         this.clearStatValueCache(); // 清除缓存
         
         // 使用 Promise.all 并发请求数据
-        const [timeSeriesRes, periodStatsRes] = await Promise.all([
-          this.fetchEmotionStats(this.currentPeriod),
+        const [periodStatsRes] = await Promise.all([
+          //this.fetchEmotionStats(this.currentPeriod),
           this.fetchPeriodStats(this.currentPeriod)
         ]);
         
-        console.log('数据加载完成:', {
-          timeSeriesData: timeSeriesRes,
-          periodStatsData: periodStatsRes.data
-        });
         
         // 检查数据有效性
         if (!periodStatsRes.data || !periodStatsRes.data.statistics) {
@@ -1022,7 +902,6 @@ export default {
         }
         
         // 先更新数据
-        this.timeSeriesData = timeSeriesRes;
         this.periodStatsData = periodStatsRes.data;
         this.chartKey++; // 强制刷新图表
         
@@ -1077,6 +956,14 @@ export default {
           period,
           (res) => {
             this.currentRequests = this.currentRequests.filter(t => t !== requestTask);
+            
+            // 如果返回了task_id，则获取情感建议
+            if (res.data && res.data.task_id) {
+              this.tipTaskId = res.data.task_id;
+              this.tipRetryCount = 0;
+              this.fetchEmotionTips();
+            }
+            
             resolve(res);
           },
           (err) => {
@@ -1296,18 +1183,73 @@ export default {
           }
         }
       }).exec();
-    }
+    },
+
+    // 修改获取统计数据的方法
+    fetchStats() {
+      this.loading = true
+      this.statsData = null
+      this.emotionTips = null // 重置提示数据
+      
+      getPeriodEmotionStats(this.currentPeriod, (res) => {
+        console.log('获取统计数据成功:', res)
+        this.statsData = res
+        this.loading = false
+        
+        // 如果返回了task_id，则获取情感建议
+        if (res.data && res.data.task_id) {
+          this.tipTaskId = res.data.task_id
+          this.tipRetryCount = 0
+          this.fetchEmotionTips()
+        }
+      }, (error) => {
+        console.error('获取统计数据失败:', error)
+        this.loading = false
+        uni.showToast({
+          title: '获取统计数据失败',
+          icon: 'none'
+        })
+      })
+    },
+    
+    // 新增获取情感建议的方法
+    fetchEmotionTips() {
+      if (!this.tipTaskId || this.tipRetryCount >= this.tipMaxRetries) {
+        return
+      }
+      
+      getEmotionTips(this.tipTaskId, (res) => {
+        console.log('获取情感建议成功:', res)
+        
+        // 处理成功响应
+        if (res.data && res.data.tips) {
+          this.emotionTips = res.data.tips
+        }
+      }, (error) => {
+        console.log('获取情感建议失败或处理中:', error)
+        
+        // 如果是处理中状态，则延迟重试
+        if (error.message && error.message.includes('处理中')) {
+          this.tipRetryCount++
+          if (this.tipRetryCount < this.tipMaxRetries) {
+            setTimeout(() => {
+              this.fetchEmotionTips()
+            }, 3000)
+          }
+        }
+      })
+    },
   },
 
   watch: {
-    timeSeriesData: {
-      handler() {
-        this.$nextTick(() => {
-          this.updateCharts()
-        })
-      },
-      deep: true
-    },
+    // timeSeriesData: {
+    //   handler() {
+    //     this.$nextTick(() => {
+    //       this.updateCharts()
+    //     })
+    //   },
+    //   deep: true
+    // },
     periodStatsData: {
       handler(newVal) {
         if (!newVal) return
@@ -1549,20 +1491,25 @@ export default {
 
 .chart-tip {
   display: flex;
-  align-items: center;
-  padding: 20rpx;
-  background: rgba(255, 255, 255, 0.1);
+  align-items: flex-start;
+  padding: 16rpx 20rpx;
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 12rpx;
   margin-top: 20rpx;
+  border-left: 6rpx solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
   
   .tip-icon {
-    font-size: 36rpx;
+    font-size: 32rpx;
     margin-right: 12rpx;
+    flex-shrink: 0;
   }
   
   .tip-text {
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 26rpx;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 24rpx;
+    line-height: 1.5;
+    flex: 1;
   }
 }
 

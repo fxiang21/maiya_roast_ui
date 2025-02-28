@@ -317,3 +317,36 @@ export function getPeriodEmotionStats(period, successCallback, failCallback) {
     failCallback && failCallback(new Error('请求失败：' + error.message))
   })
 } 
+
+/**
+ * 获取情感建议
+ * @param {String} taskId 任务ID
+ * @param {Function} successCallback 成功回调
+ * @param {Function} failCallback 失败回调
+ */
+export function getEmotionTips(taskId, successCallback, failCallback) {
+  const deviceId = getOrGenerateDeviceId()
+  
+  return http.request({
+    url: `speech/emotion/tips/${taskId}`,
+    method: Method.GET,
+    needToken: true,
+    data: {},
+    header: {
+      'content-type': 'application/json',
+      'Authorization': uni.getStorageSync('token') || '',
+      'X-Anonymous-ID': deviceId
+    },
+  }).then((res) => {
+    if (res.data.code === 200) {
+      successCallback && successCallback(res.data)
+    } else if (res.data.code === 202) {
+      // 处理中状态
+      failCallback && failCallback(new Error('处理中，请稍后再试'))
+    } else {
+      failCallback && failCallback(new Error(res.data.message || '获取情感建议失败'))
+    }
+  }).catch((error) => {
+    failCallback && failCallback(new Error('请求失败：' + error.message))
+  })
+} 
