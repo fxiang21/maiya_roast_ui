@@ -344,14 +344,14 @@
 	},
 	"tabBar": {
 		"selectedColor": "#07C160",
-		"backgroundColor": "#0A0B1B",
+		"backgroundColor": "#5b5f92",
 		"color": "#8F8F8F",
 		"borderStyle": "black",
 		"list": [
 			{
 				"pagePath": "pages/tabbar/emotion/echo",
-				"iconPath": "static/tabbar/home.png",
-				"selectedIconPath": "static/tabbar/home-s.png",
+				"iconPath": "static/tabbar/history.png",
+				"selectedIconPath": "/static/tabbar/history-s.png",
 				"text": "历史记录"
 			},
 			{

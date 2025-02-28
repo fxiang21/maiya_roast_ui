@@ -6,11 +6,18 @@
       :isMuted="isMuted"
     />
     
+    <!-- 黑洞效果组件 -->
+    <BlackHoleEffect 
+      v-if="showBlackHole" 
+      :position="blackHolePosition"
+      targetArea="emotion-bubbles-container" 
+      @animationEnd="onBlackHoleAnimationEnd"
+      @startHidingBubbles="startHidingBubbles"
+      @updateBubbles="updateBubbles"
+    />
+    
     <!-- 内容层，确保在背景之上 -->
     <view class="content" style="position: relative; z-index: 2;">
-      <!-- 添加状态栏占位 -->
-      <view class="status-bar" :style="{ height: statusBarHeight + 'px' }"></view>
-      
       <!-- 顶部栏 -->
       <view class="top-section">
         <!-- 日期 -->
@@ -60,18 +67,21 @@
       </view>
 
       <!-- 情绪气泡图 -->
-      <view class="emotion-bubbles-container" v-if="emotions.length > 0">
+      <view class="emotion-bubbles-container" v-if="emotions.length > 0 && !hideBubbles">
         <view class="emotion-bubbles">
           <view 
             v-for="(emotion, index) in emotions" 
             :key="index"
             class="bubble"
+            :id="`bubble-${index}`"
             :style="{
               width: calculateBubbleSize(emotion.percentage) + 'rpx',
               height: calculateBubbleSize(emotion.percentage) + 'rpx',
               backgroundColor: emotion.color,
-              transform: `translate(${emotion.offsetX}rpx, ${emotion.offsetY}rpx)`,
-              position: 'absolute'
+              transform: getBubbleTransform(emotion, index),
+              position: 'absolute',
+              opacity: getBubbleOpacity(index),
+              transition: blackHoleActive ? 'transform 0.5s, opacity 0.5s' : 'none'
             }"
           >
             <text class="emotion-label">{{emotion.name}}</text>
@@ -91,7 +101,7 @@
           <text class="iconfont" :class="isVoiceMode ? 'icon-keyboard' : 'icon-mic'"></text>
         </view>
         
-        <!-- 文字输入框 -->
+        <!-- 文字输入框 - 默认显示 -->
         <view v-if="!isVoiceMode" class="text-input-area">
           <input 
             type="text" 
@@ -131,13 +141,15 @@
 
 <script>
 import WeatherDisplay from '@/components/WeatherDisplay.vue'
-import { uploadEmotionAudio } from '@/common/js/http.js'
+import BlackHoleEffect from '@/components/BlackHoleEffect.vue'
+import { uploadEmotionAudio  } from '@/common/js/http.js'
 const recorderManager = uni.getRecorderManager();
 const app = getApp();
 
 export default {
   components: {
     WeatherDisplay,
+    BlackHoleEffect,
   },
   data() {
     return {
@@ -150,7 +162,7 @@ export default {
       encouragementText: '每一天都是新的开始，分享你的心情吧！',
       audioContext: null,
       isMuted: false,
-      isVoiceMode: true, // 默认语音模式
+      isVoiceMode: false, // 默认为文字输入模式
       inputText: '', // 文字输入内容
       displaySentences: [], // 存储分句后的文本
       isTyping: false,
@@ -160,7 +172,12 @@ export default {
       isSubmitting: false,
       isRendering: false, // 添加渲染状态锁
       submitTimeout: null,
-      defaultEncouragement: '每一天都是新的开始，分享你的心情吧！'
+      defaultEncouragement: '每一天都是新的开始，分享你的心情吧！',
+      showBlackHole: false,
+      blackHolePosition: { x: 0, y: 0 },
+      hideBubbles: false, // 控制气泡显示/隐藏
+      blackHoleActive: false, // 黑洞动画是否激活
+      bubblesData: [], // 存储气泡动画数据
     }
   },
 
@@ -351,18 +368,50 @@ export default {
       this.isRecording = false;
       this.isLoading = true;
       
-      // 设置5秒超时
-      this.submitTimeout = setTimeout(() => {
-        if (this.isLoading) {
-          this.isLoading = false;
-          uni.showToast({
-            title: '请求超时，请重试',
-            icon: 'none'
-          });
+      // 获取气泡容器位置作为黑洞起始点
+      const query = uni.createSelectorQuery().in(this);
+      query.select('.emotion-bubbles-container').boundingClientRect(data => {
+        if (data) {
+          this.blackHolePosition = {
+            x: data.left + data.width / 2,
+            y: data.top + data.height / 2
+          };
+        } else {
+          // 使用屏幕中心作为默认位置，但稍微向上偏移确保在气泡区域
+          const sysInfo = {};
+          // #ifdef MP-WEIXIN
+          sysInfo.windowWidth = wx.getWindowInfo().windowWidth;
+          sysInfo.windowHeight = wx.getWindowInfo().windowHeight;
+          // #endif
+          // #ifndef MP-WEIXIN
+          const tempInfo = uni.getSystemInfoSync();
+          sysInfo.windowWidth = tempInfo.windowWidth;
+          sysInfo.windowHeight = tempInfo.windowHeight;
+          // #endif
+          
+          this.blackHolePosition = {
+            x: sysInfo.windowWidth / 2,
+            y: sysInfo.windowHeight / 2 - 100
+          };
         }
-      }, 5000);
-      
-      recorderManager.stop();
+        
+        this.showBlackHole = true;
+        
+        // 设置5秒超时
+        this.submitTimeout = setTimeout(() => {
+          if (this.isLoading) {
+            this.isLoading = false;
+            this.showBlackHole = false;
+            this.hideBubbles = false;
+            uni.showToast({
+              title: '请求超时，请重试',
+              icon: 'none'
+            });
+          }
+        }, 5000);
+        
+        recorderManager.stop();
+      }).exec();
     },
 
     generateRandomOffset(bubbleSize, index, totalBubbles) {
@@ -565,93 +614,142 @@ export default {
       this.isVoiceMode = !this.isVoiceMode;
     },
     
-    // 处理文字提交
-    async handleTextSubmit() {
-      // 严格检查所有状态
-      if (!this.inputText.trim() || !this.canInteract) {
-        console.log('提交被阻止：', {
-          isLoading: this.isLoading,
-          isSubmitting: this.isSubmitting,
-          isRendering: this.isRendering
-        });
-        return;
-      }
+    // 处理文本提交
+    handleTextSubmit() {
+      if (!this.canInteract || !this.inputText.trim()) return;
       
-      // 立即锁定所有状态
+      const currentText = this.inputText.trim();
       this.isSubmitting = true;
-      this.isLoading = true;
-      const currentText = this.inputText;
       
-      // 设置超时保护
-      this.submitTimeout = setTimeout(() => {
-        this.resetAllStates();
-        uni.showToast({
-          title: '请求超时，请重试',
-          icon: 'none'
-        });
-      }, 5000);
-      
-      try {
-        await new Promise((resolve, reject) => {
-          uploadEmotionAudio(
-            null,
-            async (response) => {
-              try {
-                // 开始渲染过程
-                this.isRendering = true;
-                
-                // 清除超时定时器
-                if (this.submitTimeout) {
-                  clearTimeout(this.submitTimeout);
-                  this.submitTimeout = null;
-                }
-                
-                // 清空输入
-                if (this.inputText === currentText) {
-                  this.inputText = '';
-                }
-                
-                // 处理响应数据
-                this.stResult = response.data.text;
-                await this.processEmotions(response);
-                
-                // 使用响应中的鼓励语，如果没有则使用默认值
-                const encouragementText = response.data.emotion.encourage || this.defaultEncouragement;
-                this.startTyping(encouragementText);
-                
-                this.updateWeatherType(response.data.emotion.weather || 'Cloudy');
-                await this.saveLastEmotion();
-                
-                resolve();
-              } catch (error) {
-                reject(error);
-              }
-            },
-            (error) => {
-              reject(error);
-            },
-            { text: currentText }
-          );
-        });
-      } catch (error) {
-        console.error('处理失败:', error);
-        uni.showToast({
-          title: error.message || '处理失败',
-          icon: 'none'
-        });
-      } finally {
-        // 等待一小段时间确保渲染完成
-        setTimeout(() => {
+      // 获取气泡容器位置作为黑洞起始点（修改为获取气泡容器中心点）
+      const query = uni.createSelectorQuery().in(this);
+      query.select('.emotion-bubbles-container').boundingClientRect(data => {
+        if (data) {
+          this.blackHolePosition = {
+            x: data.left + data.width / 2,
+            y: data.top + data.height / 2
+          };
+          this.showBlackHole = true;
+        } else {
+          // 获取输入框位置作为备选
+          query.select('.text-input-area').boundingClientRect(inputData => {
+            if (inputData) {
+              this.blackHolePosition = {
+                x: inputData.left + inputData.width / 2,
+                y: inputData.top - 100 // 向上偏移确保黑洞在气泡区域
+              };
+            } else {
+              // 使用屏幕中心作为默认位置
+              const sysInfo = {};
+              // #ifdef MP-WEIXIN
+              sysInfo.windowWidth = wx.getWindowInfo().windowWidth;
+              sysInfo.windowHeight = wx.getWindowInfo().windowHeight;
+              // #endif
+              // #ifndef MP-WEIXIN
+              const tempInfo = uni.getSystemInfoSync();
+              sysInfo.windowWidth = tempInfo.windowWidth;
+              sysInfo.windowHeight = tempInfo.windowHeight;
+              // #endif
+              
+              this.blackHolePosition = {
+                x: sysInfo.windowWidth / 2,
+                y: sysInfo.windowHeight / 2 - 100
+              };
+            }
+            this.showBlackHole = true;
+          }).exec();
+        }
+        
+        // 设置超时保护
+        this.submitTimeout = setTimeout(() => {
           this.resetAllStates();
-        }, 500);
+          this.showBlackHole = false;
+          uni.showToast({
+            title: '请求超时，请重试',
+            icon: 'none'
+          });
+        }, 5000);
+        
+        // 移除 await 关键字，使用 Promise 链式调用
+        uploadEmotionAudio(
+          null,
+          (response) => {
+            try {
+              // 开始渲染过程
+              this.isRendering = true;
+              
+              // 清除超时定时器
+              if (this.submitTimeout) {
+                clearTimeout(this.submitTimeout);
+                this.submitTimeout = null;
+              }
+              
+              // 清空输入
+              if (this.inputText === currentText) {
+                this.inputText = '';
+              }
+              
+              // 处理响应数据
+              this.stResult = response.data.text;
+              this.processEmotions(response);
+              
+              // 使用响应中的鼓励语，如果没有则使用默认值
+              const encouragementText = response.data.emotion.encourage || this.defaultEncouragement;
+              this.startTyping(encouragementText);
+              
+              this.updateWeatherType(response.data.emotion.weather || 'Cloudy');
+              this.saveLastEmotion();
+              
+              // 等待一小段时间确保渲染完成
+              setTimeout(() => {
+                this.resetAllStates();
+              }, 500);
+            } catch (error) {
+              console.error('处理响应失败:', error);
+              this.resetAllStates();
+              uni.showToast({
+                title: '处理失败',
+                icon: 'none'
+              });
+            }
+          },
+          (error) => {
+            console.error('请求失败:', error);
+            this.resetAllStates();
+            uni.showToast({
+              title: error.message || '请求失败',
+              icon: 'none'
+            });
+          },
+          { text: currentText }
+        );
+      }).exec();
+    },
+
+    // 黑洞动画结束回调 - 修改逻辑
+    onBlackHoleAnimationEnd() {
+      this.showBlackHole = false;
+      this.blackHoleActive = false;
+      
+      // 如果已经有情绪数据，不应该清空
+      if (this.emotions.length === 0) {
+        this.hideBubbles = true;
+      } else {
+        // 如果有情绪数据，应该显示它们
+        this.hideBubbles = false;
       }
     },
 
-    // 重置所有状态
+    // 重置所有状态 - 确保重置hideBubbles
     resetAllStates() {
       this.isLoading = false;
       this.isSubmitting = false;
       this.isRendering = false;
+      this.showBlackHole = false;
+      // 如果有情绪数据，应该显示
+      if (this.emotions.length > 0) {
+        this.hideBubbles = false;
+      }
       if (this.submitTimeout) {
         clearTimeout(this.submitTimeout);
         this.submitTimeout = null;
@@ -719,7 +817,77 @@ export default {
         });
         this.isTyping = false;
       }
-    }
+    },
+
+    // 开始隐藏气泡
+    startHidingBubbles() {
+      this.blackHoleActive = true;
+      this.hideBubbles = true; // 立即隐藏气泡
+      
+      // 初始化气泡数据
+      this.bubblesData = this.emotions.map((_, index) => ({
+        offsetX: 0,
+        offsetY: 0,
+        opacity: 1
+      }));
+    },
+    
+    // 更新气泡位置和样式
+    updateBubbles(data) {
+      const { progress, blackHolePosition } = data;
+      
+      // 如果进度超过50%，完全隐藏气泡
+      if (progress > 0.5) {
+        this.hideBubbles = true;
+        return;
+      }
+      
+      // 更新每个气泡的位置，使其向黑洞中心移动
+      this.emotions.forEach((emotion, index) => {
+        if (!this.bubblesData[index]) return;
+        
+        // 计算气泡元素的中心位置（使用预先计算的位置）
+        const bubbleSize = this.calculateBubbleSize(emotion.percentage);
+        const bubbleX = emotion.offsetX + bubbleSize / 2;
+        const bubbleY = emotion.offsetY + bubbleSize / 2;
+        
+        // 将rpx转换为px
+        const rpxRatio = uni.getSystemInfoSync().windowWidth / 750;
+        const bubbleXPx = bubbleX * rpxRatio;
+        const bubbleYPx = bubbleY * rpxRatio;
+        
+        // 计算到黑洞的方向
+        const dx = blackHolePosition.x - bubbleXPx;
+        const dy = blackHolePosition.y - bubbleYPx;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // 根据进度和距离计算偏移量
+        const moveFactor = progress * (1 - Math.min(1, distance / 500));
+        
+        this.bubblesData[index] = {
+          offsetX: dx * moveFactor / rpxRatio, // 转回rpx
+          offsetY: dy * moveFactor / rpxRatio, // 转回rpx
+          opacity: 1 - progress * 2 // 逐渐降低透明度
+        };
+      });
+    },
+    
+    // 获取气泡的变换样式
+    getBubbleTransform(emotion, index) {
+      if (this.blackHoleActive && this.bubblesData[index]) {
+        const { offsetX, offsetY } = this.bubblesData[index];
+        return `translate(${emotion.offsetX + offsetX}rpx, ${emotion.offsetY + offsetY}rpx)`;
+      }
+      return `translate(${emotion.offsetX}rpx, ${emotion.offsetY}rpx)`;
+    },
+    
+    // 获取气泡的透明度
+    getBubbleOpacity(index) {
+      if (this.blackHoleActive && this.bubblesData[index]) {
+        return Math.max(0, this.bubblesData[index].opacity);
+      }
+      return 1;
+    },
   },
 
   // 组件销毁时清理
@@ -1001,11 +1169,12 @@ export default {
 .emotion-bubbles-container {
   position: relative;
   width: 100%;
-  height: 600rpx;
+  height: 500rpx; /* 固定高度，避免与输入区域重叠 */
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 200rpx;
+  margin-bottom: 200rpx; /* 增加底部间距，与输入框拉开距离 */
+  overflow: visible; /* 确保气泡可以溢出容器 */
 }
 
 .emotion-bubbles {
@@ -1210,6 +1379,8 @@ export default {
   display: flex;
   align-items: center;
   z-index: 100;
+  padding-top: 20rpx;
+  padding-bottom: 20rpx;
   
   &.no-bubbles {
     bottom: 160rpx;
@@ -1327,5 +1498,44 @@ export default {
     opacity: 0.5;
     pointer-events: none;
   }
+}
+</style>
+
+<!-- 添加新的样式，确保气泡区域和输入区域不重叠 -->
+<style lang="scss">
+.emotion-bubbles-container {
+  position: relative;
+  width: 100%;
+  height: 500rpx; /* 固定高度，避免与输入区域重叠 */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 200rpx; /* 增加底部间距，与输入框拉开距离 */
+  overflow: visible; /* 确保气泡可以溢出容器 */
+}
+
+.input-section {
+  position: fixed;
+  bottom: 100rpx;
+  left: 0;
+  right: 0;
+  padding: 0 30rpx;
+  display: flex;
+  align-items: center;
+  z-index: 100;
+  padding-top: 20rpx;
+  padding-bottom: 20rpx;
+  
+  &.no-bubbles {
+    bottom: 160rpx;
+  }
+}
+
+/* 确保气泡容器和输入区域之间有足够空间 */
+.content {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding-bottom: 180rpx; /* 为底部固定的输入框留出空间 */
 }
 </style>
