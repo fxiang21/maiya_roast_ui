@@ -1,199 +1,226 @@
 <template>
   <view class="stats-container">
-    <!-- 周期选择器 -->
-    <view class="period-selector">
-      <view 
-        v-for="item in periods" 
-        :key="item.value"
-        class="period-item"
-        :class="{ active: currentPeriod === item.value }"
-        @tap="changePeriod(item.value)"
-      >
-        {{ item.label }}
-      </view>
-    </view>
-
-    <block v-if="statsData">
-      <!-- 数据概览标题 -->
-      <text class="section-title">数据概览</text>
-      
-      <!-- 数据概览卡片 -->
-      <view class="stats-card">
-        <view class="overview-stats">
-          <view class="stat-item">
-            <text class="stat-value">{{ getStatValue(statsData.statistics.complaint_length) }}</text>
-            <text class="stat-label">吐槽字数</text>
-          </view>
-          <view class="stat-item">
-            <text class="stat-value">{{ getLikesCount }}</text>
-            <text class="stat-label">点赞数</text>
-          </view>
-          <view class="stat-item">
-            <text class="stat-value">{{ getCommentsCount }}</text>
-            <text class="stat-label">评论数</text>
+    <!-- 空状态提示 -->
+    <view v-if="showEmptyState" class="empty-state">
+      <view class="empty-content">
+        <!-- 图标和主要提示文字 -->
+        <view class="main-empty">
+          <view class="empty-text">
+            <text class="highlight">好</text>与<text class="highlight">不好</text>，
+            <text class="brand-text">黑洞吐槽</text>
           </view>
         </view>
         
-        <!-- 情感气泡图 -->
-        <view class="chart-section">
-          <view class="emotion-bubbles-wrapper">
-            <view class="emotion-bubbles">
-              <!-- 调试信息 -->
-              <view v-if="!dynamicBubbles.length" class="debug-info">
-                {{ debugInfo || '加载中...' }}
-              </view>
-              
-              <!-- 气泡容器 -->
-              <view v-else class="bubbles-container">
-                <view
-                  v-for="(bubble, index) in dynamicBubbles"
-                  :key="index"
-                  class="bubble-item"
-                  :style="{
-                    width: bubble.size + 'rpx',
-                    height: bubble.size + 'rpx',
-                    left: (bubble.x - bubble.size/2) + 'rpx',
-                    top: (bubble.y - bubble.size/2) + 'rpx',
-                    background: getBubbleGradient(bubble.emotion),
-                    'clip-path': bubble.shape
-                  }"
-                >
-                  <view class="bubble-content">
-                    <text class="emotion-face" :style="{
-                      color: getContrastColor(bubble.emotion),
-                      textShadow: '0 2rpx 4rpx rgba(0, 0, 0, 0.3)'
-                    }">
-                      {{ getEmotionFace(bubble.emotion) }}
-                    </text>
-                    <text class="emotion-text" :style="{
-                      color: getContrastColor(bubble.emotion),
-                      backgroundColor: 'rgba(0, 0, 0, 0.15)',
-                      padding: '4rpx 12rpx',
-                      borderRadius: '20rpx'
-                    }">
-                      {{ bubble.emotion }}
-                    </text>
+        <!-- 添加鼓励性的随机提示语 -->
+        <view class="encouragement">
+          <text class="tip">{{ randomTip }}</text>
+        </view>
+        
+        <!-- 操作按钮 -->
+        <button class="goto-emotion-btn" @tap="navigateToEmotion">
+          <text class="iconfont icon-edit"></text>
+          去吐槽
+        </button>
+      </view>
+    </view>
+
+    <!-- 原有内容，只在有数据时显示 -->
+    <block v-else>
+      <!-- 周期选择器 -->
+      <view class="period-selector">
+        <view 
+          v-for="item in periods" 
+          :key="item.value"
+          class="period-item"
+          :class="{ active: currentPeriod === item.value }"
+          @tap="changePeriod(item.value)"
+        >
+          {{ item.label }}
+        </view>
+      </view>
+
+      <block v-if="statsData">
+        <!-- 数据概览标题 -->
+        <text class="section-title">数据概览</text>
+        
+        <!-- 数据概览卡片 -->
+        <view class="stats-card">
+          <view class="overview-stats">
+            <view class="stat-item">
+              <text class="stat-value">{{ getStatValue(statsData.statistics.complaint_length) }}</text>
+              <text class="stat-label">吐槽字数</text>
+            </view>
+            <view class="stat-item">
+              <text class="stat-value">{{ getLikesCount }}</text>
+              <text class="stat-label">点赞数</text>
+            </view>
+            <view class="stat-item">
+              <text class="stat-value">{{ getCommentsCount }}</text>
+              <text class="stat-label">评论数</text>
+            </view>
+          </view>
+          
+          <!-- 情感气泡图 -->
+          <view class="chart-section">
+            <view class="emotion-bubbles-wrapper">
+              <view class="emotion-bubbles">
+                <!-- 调试信息 -->
+                <view v-if="!dynamicBubbles.length" class="debug-info">
+                  {{ debugInfo || '加载中...' }}
+                </view>
+                
+                <!-- 气泡容器 -->
+                <view v-else class="bubbles-container">
+                  <view
+                    v-for="(bubble, index) in dynamicBubbles"
+                    :key="index"
+                    class="bubble-item"
+                    :style="{
+                      width: bubble.size + 'rpx',
+                      height: bubble.size + 'rpx',
+                      left: (bubble.x - bubble.size/2) + 'rpx',
+                      top: (bubble.y - bubble.size/2) + 'rpx',
+                      background: getBubbleGradient(bubble.emotion),
+                      'clip-path': bubble.shape
+                    }"
+                  >
+                    <view class="bubble-content">
+                      <text class="emotion-face" :style="{
+                        color: getContrastColor(bubble.emotion),
+                        textShadow: '0 2rpx 4rpx rgba(0, 0, 0, 0.3)'
+                      }">
+                        {{ getEmotionFace(bubble.emotion) }}
+                      </text>
+                      <text class="emotion-text" :style="{
+                        color: getContrastColor(bubble.emotion),
+                        backgroundColor: 'rgba(0, 0, 0, 0.15)',
+                        padding: '4rpx 12rpx',
+                        borderRadius: '20rpx'
+                      }">
+                        {{ bubble.emotion }}
+                      </text>
+                    </view>
                   </view>
                 </view>
               </view>
             </view>
-          </view>
-          
-          <!-- 新增提示文本 -->
-          <view class="chart-tip" v-if="emotionTips && emotionTips.emotion">
-            <text class="tip-icon">💡</text>
-            <text class="tip-text">{{ emotionTips.emotion }}</text>
+            
+            <!-- 新增提示文本 -->
+            <view class="chart-tip" v-if="emotionTips && emotionTips.emotion">
+              <text class="tip-icon">💡</text>
+              <text class="tip-text">{{ emotionTips.emotion }}</text>
+            </view>
           </view>
         </view>
-      </view>
 
-      <!-- 分类统计标题 -->
-      <text class="section-title">吐槽分类</text>
-      
-      <!-- 分类统计图 -->
-      <view class="stats-card">
-        <view class="chart-wrapper">
-          <view class="chart-title">分类统计</view>
-          <view class="category-chart">
-            <view v-for="(categoryData, category) in processedCategoryData" :key="category" class="category-item">
-              <view class="category-bars">
-                <view 
-                  v-if="categoryData.positive > 0"
-                  class="emotion-bar positive" 
-                  :style="{height: categoryData.positive_height + 'rpx'}" 
-                >
-                  <text class="bar-value">{{categoryData.positive}}</text>
+        <!-- 分类统计标题 -->
+        <text class="section-title">吐槽分类</text>
+        
+        <!-- 分类统计图 -->
+        <view class="stats-card">
+          <view class="chart-wrapper">
+            <view class="chart-title">分类统计</view>
+            <view class="category-chart">
+              <view v-for="(categoryData, category) in processedCategoryData" :key="category" class="category-item">
+                <view class="category-bars">
+                  <view 
+                    v-if="categoryData.positive > 0"
+                    class="emotion-bar positive" 
+                    :style="{height: categoryData.positive_height + 'rpx'}" 
+                  >
+                    <text class="bar-value">{{categoryData.positive}}</text>
+                  </view>
+                  
+                  <view 
+                    v-if="categoryData.neutral > 0"
+                    class="emotion-bar neutral" 
+                    :style="{height: categoryData.neutral_height + 'rpx'}" 
+                  >
+                    <text class="bar-value">{{categoryData.neutral}}</text>
+                  </view>
+                  
+                  <view 
+                    v-if="categoryData.negative > 0"
+                    class="emotion-bar negative" 
+                    :style="{height: categoryData.negative_height + 'rpx'}" 
+                  >
+                    <text class="bar-value">{{categoryData.negative}}</text>
+                  </view>
                 </view>
-                
-                <view 
-                  v-if="categoryData.neutral > 0"
-                  class="emotion-bar neutral" 
-                  :style="{height: categoryData.neutral_height + 'rpx'}" 
-                >
-                  <text class="bar-value">{{categoryData.neutral}}</text>
-                </view>
-                
-                <view 
-                  v-if="categoryData.negative > 0"
-                  class="emotion-bar negative" 
-                  :style="{height: categoryData.negative_height + 'rpx'}" 
-                >
-                  <text class="bar-value">{{categoryData.negative}}</text>
-                </view>
+                <view class="category-name">{{category}}</view>
               </view>
-              <view class="category-name">{{category}}</view>
-            </view>
-            <view v-if="!Object.keys(processedCategoryData).length" class="empty-chart">
-              暂无分类数据
-            </view>
-          </view>
-          
-          <!-- 添加图例 -->
-          <view class="chart-legend">
-            <view class="legend-item">
-              <view class="legend-color positive"></view>
-              <text class="legend-text">积极</text>
-            </view>
-            <view class="legend-item">
-              <view class="legend-color neutral"></view>
-              <text class="legend-text">中性</text>
-            </view>
-            <view class="legend-item">
-              <view class="legend-color negative"></view>
-              <text class="legend-text">消极</text>
-            </view>
-          </view>
-          
-          <!-- 分类统计提示文本 -->
-          <view class="chart-tip" v-if="emotionTips && emotionTips.category">
-            <text class="tip-icon">💡</text>
-            <text class="tip-text">{{ emotionTips.category }}</text>
-          </view>
-        </view>
-      </view>
-
-      <!-- 关键词标题 -->
-      <text class="section-title">吐槽关键词</text>
-      
-      <!-- 关键词云图 -->
-      <view class="stats-card">
-        <view class="chart-wrapper">
-          <view class="chart-title">关键词云</view>
-          <view class="keyword-cloud-container">
-            <view v-if="!processedKeywords.length" class="empty-chart">
-              暂无关键词数据
-            </view>
-            <view v-else class="keyword-cloud">
-              <view 
-                v-for="(keyword, index) in processedKeywords" 
-                :key="index"
-                class="keyword-tag"
-                :style="{
-                  fontSize: keyword.size + 'rpx',
-                  color: keyword.color,
-                  left: keyword.x + 'rpx',
-                  top: keyword.y + 'rpx',
-                  transform: `rotate(${keyword.rotate}deg)`,
-                  opacity: keyword.opacity
-                }"
-              >
-                {{ keyword.word }}
+              <view v-if="!Object.keys(processedCategoryData).length" class="empty-chart">
+                暂无分类数据
               </view>
             </view>
-          </view>
-          
-          <!-- 关键词提示文本 -->
-          <view class="chart-tip" v-if="emotionTips && emotionTips.target">
-            <text class="tip-icon">💡</text>
-            <text class="tip-text">{{ emotionTips.target }}</text>
+            
+            <!-- 添加图例 -->
+            <view class="chart-legend">
+              <view class="legend-item">
+                <view class="legend-color positive"></view>
+                <text class="legend-text">积极</text>
+              </view>
+              <view class="legend-item">
+                <view class="legend-color neutral"></view>
+                <text class="legend-text">中性</text>
+              </view>
+              <view class="legend-item">
+                <view class="legend-color negative"></view>
+                <text class="legend-text">消极</text>
+              </view>
+            </view>
+            
+            <!-- 分类统计提示文本 -->
+            <view class="chart-tip" v-if="emotionTips && emotionTips.category">
+              <text class="tip-icon">💡</text>
+              <text class="tip-text">{{ emotionTips.category }}</text>
+            </view>
           </view>
         </view>
+
+        <!-- 关键词标题 -->
+        <text class="section-title">吐槽关键词</text>
+        
+        <!-- 关键词云图 -->
+        <view class="stats-card">
+          <view class="chart-wrapper">
+            <view class="chart-title">关键词云</view>
+            <view class="keyword-cloud-container">
+              <view v-if="!processedKeywords.length" class="empty-chart">
+                暂无关键词数据
+              </view>
+              <view v-else class="keyword-cloud">
+                <view 
+                  v-for="(keyword, index) in processedKeywords" 
+                  :key="index"
+                  class="keyword-tag"
+                  :style="{
+                    fontSize: keyword.size + 'rpx',
+                    color: keyword.color,
+                    left: keyword.x + 'rpx',
+                    top: keyword.y + 'rpx',
+                    transform: `rotate(${keyword.rotate}deg)`,
+                    opacity: keyword.opacity
+                  }"
+                >
+                  {{ keyword.word }}
+                </view>
+              </view>
+            </view>
+            
+            <!-- 关键词提示文本 -->
+            <view class="chart-tip" v-if="emotionTips && emotionTips.target">
+              <text class="tip-icon">💡</text>
+              <text class="tip-text">{{ emotionTips.target }}</text>
+            </view>
+          </view>
+        </view>
+      </block>
+
+      <view class="loading-state" v-if="isLoading">
+        <uni-load-more status="loading" />
       </view>
     </block>
-
-    <view class="loading-state" v-if="isLoading">
-      <uni-load-more status="loading" />
-    </view>
   </view>
 </template>
 
@@ -279,6 +306,14 @@ export default {
       tipTaskId: null,
       tipRetryCount: 0,
       tipMaxRetries: 5,
+      // 添加提示信息数组
+      tips: [
+        "吐槽越多，统计越准确",
+        "抒发情感，看见自己",
+        "情绪变化，尽在掌握",
+        "记录心情，发现规律",
+        "让黑洞帮你分析情绪"
+      ],
     }
   },
 
@@ -417,7 +452,22 @@ export default {
     keywordTotalCount() {
       if (!this.getTargetStats) return 0;
       return Object.values(this.getTargetStats).reduce((sum, count) => sum + count, 0);
-    }
+    },
+
+    // 添加空状态判断
+    showEmptyState() {
+      // 判断是否有统计数据且数据为空
+      return !this.isLoading && 
+             (!this.statsData || 
+              !this.statsData.statistics || 
+              (this.statsData.statistics && 
+               Object.keys(this.statsData.statistics).length === 0));
+    },
+    
+    // 随机提示语
+    randomTip() {
+      return this.tips[Math.floor(Math.random() * this.tips.length)];
+    },
   },
 
   methods: {
@@ -1239,6 +1289,13 @@ export default {
         }
       })
     },
+
+    // 添加导航方法
+    navigateToEmotion() {
+      uni.switchTab({
+        url: '/pages/tabbar/emotion/home'
+      });
+    },
   },
 
   watch: {
@@ -1667,5 +1724,108 @@ export default {
 .legend-text {
   font-size: 22rpx;
   color: rgba(255, 255, 255, 0.7);
+}
+
+// 添加空状态样式，与 history.vue 保持一致
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  padding: 0 40rpx;
+  background: linear-gradient(180deg, #0A0B1B 0%, #0A0B1B 100%);
+  
+  .empty-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transform: translateY(-10%);
+    
+    .main-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 60rpx;
+      
+      .empty-text {
+        font-size: 36rpx;
+        color: rgba(255, 255, 255, 0.8);
+        margin-bottom: 20rpx;
+        letter-spacing: 4rpx;
+        font-weight: 300;
+        text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.1);
+        
+        .highlight {
+          color: #7C4DFF;
+          font-weight: 500;
+          background: linear-gradient(135deg, #7C4DFF, #8B5CF6);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+        
+        .brand-text {
+          font-weight: 500;
+          background: linear-gradient(135deg, #6366f1, #8b5cf6);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          padding: 0 4rpx;
+        }
+      }
+    }
+    
+    .encouragement {
+      margin-bottom: 80rpx;
+      text-align: center;
+      
+      .tip {
+        font-size: 28rpx;
+        color: rgba(255, 255, 255, 0.5);
+        font-style: italic;
+        line-height: 1.5;
+        padding: 20rpx 40rpx;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 30rpx;
+        backdrop-filter: blur(10px);
+      }
+    }
+    
+    .goto-emotion-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #ffffff;
+      border: none;
+      padding: 20rpx 60rpx;
+      border-radius: 40rpx;
+      font-size: 28rpx;
+      box-shadow: 0 4rpx 12rpx rgba(99, 102, 241, 0.2);
+      
+      .iconfont {
+        font-size: 28rpx;
+        margin-right: 10rpx;
+      }
+      
+      &:active {
+        transform: scale(0.98);
+      }
+    }
+  }
+}
+
+// 添加简单的渐入动画
+.empty-content {
+  animation: fadeIn 0.8s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-10%);
+  }
 }
 </style>
