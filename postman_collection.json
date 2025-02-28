@@ -160,7 +160,8 @@
 							"query": [
 								{
 									"key": "period",
-									"value": "daily"
+									"value": "daily",
+									"description": "统计周期：daily(日)/weekly(周)/monthly(月)"
 								}
 							]
 						}
@@ -169,7 +170,7 @@
 						{
 							"name": "获取成功",
 							"code": 200,
-							"body": "{\n    \"code\": 200,\n    \"message\": \"获取情感统计数据成功\",\n    \"data\": {\n        \"statistics\": {\n            \"2024-04-27\": {\n                \"category\": {\"生活\": 50},\n                \"emotion\": {\"快乐\": 100},\n                \"complaint_length\": 0,\n                \"target\": {\"无\": 1}\n            }\n        },\n        \"user_stats\": {\n            \"likes_count\": 10,\n            \"comments_count\": 5\n        }\n    }\n}"
+							"body": "{\n    \"code\": 200,\n    \"message\": \"获取情感统计数据成功\",\n    \"data\": {\n        \"statistics\": {\n            \"2023-10-01\": {\n                \"category\": {\n                    \"工作\": {\n                        \"快乐\": 60,\n                        \"压力\": 40\n                    },\n                    \"生活\": {\n                        \"平静\": 100\n                    }\n                },\n                \"emotion\": {\n                    \"快乐\": 60,\n                    \"压力\": 40\n                },\n                \"complaint_length\": 256,\n                \"target\": {\n                    \"同事\": 2\n                }\n            }\n        },\n        \"user_stats\": {\n            \"likes_count\": 5,\n            \"comments_count\": 3\n        }\n    }\n}"
 						},
 						{
 							"name": "参数错误",
@@ -1485,7 +1486,7 @@
 						{
 							"key": "period",
 							"value": "week",
-							"description": "统计周期：week(本周)、month(本月)、year(今年)、all(所有)"
+							"description": "统计周期：weekly(本周)/monthly(本月)/yearly(今年)/all(全部)"
 						}
 					]
 				},
@@ -1497,7 +1498,7 @@
 					"originalRequest": {
 						"method": "GET",
 						"url": {
-							"raw": "http://{{host}}:8001/api/v1/speech/emotion/period_statistics?period=week"
+							"raw": "http://{{host}}:8001/api/v1/speech/emotion/period_statistics?period=weekly"
 						}
 					},
 					"status": "OK",
@@ -1515,24 +1516,26 @@
 						"data": {
 							"statistics": {
 								"category": {
-									"生活": 50,
-									"工作": 30,
-									"情感": 20
+									"工作": {
+										"快乐": 40,
+										"压力": 60
+									},
+									"学习": {
+										"焦虑": 100
+									}
 								},
 								"emotion": {
-									"快乐": 60,
-									"愤怒": 20,
-									"悲伤": 20
+									"快乐": 40,
+									"压力": 60
 								},
+								"complaint_length": 892,
 								"target": {
-									"同事": 2,
-									"家人": 1
-								},
-								"complaint_length": 25
+									"考试": 3
+								}
 							},
 							"user_stats": {
-								"likes_count": 10,
-								"comments_count": 5
+								"likes_count": 8,
+								"comments_count": 2
 							}
 						}
 					}
@@ -1556,7 +1559,7 @@
 					"_postman_previewlanguage": "json",
 					"body": {
 						"code": 40008,
-						"message": "无效的统计周期，必须为 'week', 'month', 'year' 或 'all'"
+						"message": "无效的统计周期，必须为 'weekly', 'monthly', 'yearly' 或 'all'"
 					}
 				},
 				{
@@ -1564,7 +1567,7 @@
 					"originalRequest": {
 						"method": "GET",
 						"url": {
-							"raw": "http://{{host}}:8001/api/v1/speech/emotion/period_statistics?period=week"
+							"raw": "http://{{host}}:8001/api/v1/speech/emotion/period_statistics?period=weekly"
 						}
 					},
 					"status": "Unauthorized",
@@ -1586,7 +1589,7 @@
 					"originalRequest": {
 						"method": "GET",
 						"url": {
-							"raw": "http://{{host}}:8001/api/v1/speech/emotion/period_statistics?period=week"
+							"raw": "http://{{host}}:8001/api/v1/speech/emotion/period_statistics?period=weekly"
 						}
 					},
 					"status": "Internal Server Error",
@@ -1602,6 +1605,126 @@
 						"code": 50005,
 						"message": "获取情感统计数据失败: 内部错误"
 					}
+				}
+			]
+		},
+		{
+			"name": "获取情感建议",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{token}}",
+						"type": "text",
+						"description": "JWT Token，可选"
+					},
+					{
+						"key": "X-Anonymous-ID",
+						"value": "{{X-Anonymous-ID}}",
+						"type": "text",
+						"description": "匿名用户ID，可选"
+					}
+				],
+				"url": {
+					"raw": "http://{{host}}:8001/api/v1/speech/emotion/tips/abc123",
+					"protocol": "http",
+					"host": ["{{host}}"],
+					"port": "8001",
+					"path": [
+						"api",
+						"v1",
+						"speech",
+						"emotion",
+						"tips",
+						"abc123"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "成功响应",
+					"originalRequest": {
+						"method": "GET",
+						"url": {
+							"raw": "http://{{host}}:8001/api/v1/speech/emotion/tips/abc123",
+							"host": ["{{host}}"],
+							"path": [
+								"api",
+								"v1",
+								"speech",
+								"emotion",
+								"tips",
+								"abc123"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"body": "{\n    \"code\": 200,\n    \"message\": \"获取情感建议成功\",\n    \"data\": {\n        \"tips\": {\n            \"category\": \"您的工作领域情绪以压力为主...\",\n            \"emotion\": \"本周您的情绪波动较大...\",\n            \"target\": \"建议关注家庭关系...\"\n        }\n    }\n}"
+				},
+				{
+					"name": "处理中响应",
+					"originalRequest": {
+						"method": "GET",
+						"url": {
+							"raw": "http://{{host}}:8001/api/v1/speech/emotion/tips/abc123",
+							"host": ["{{host}}"],
+							"path": [
+								"api",
+								"v1",
+								"speech",
+								"emotion",
+								"tips",
+								"abc123"
+							]
+						}
+					},
+					"status": "Accepted",
+					"code": 202,
+					"body": "{\n    \"code\": 202,\n    \"message\": \"建议生成中，请稍后再试\",\n    \"data\": {\n        \"task_id\": \"abc123\",\n        \"status\": \"pending\"\n    }\n}"
+				},
+				{
+					"name": "任务不存在",
+					"originalRequest": {
+						"method": "GET",
+						"url": {
+							"raw": "http://{{host}}:8001/api/v1/speech/emotion/tips/abc123",
+							"host": ["{{host}}"],
+							"path": [
+								"api",
+								"v1",
+								"speech",
+								"emotion",
+								"tips",
+								"abc123"
+							]
+						}
+					},
+					"status": "Not Found",
+					"code": 404,
+					"body": "{\n    \"code\": 40410,\n    \"message\": \"任务不存在或已过期\"\n}"
+				},
+				{
+					"name": "生成失败",
+					"originalRequest": {
+						"method": "GET",
+						"url": {
+							"raw": "http://{{host}}:8001/api/v1/speech/emotion/tips/abc123",
+							"host": ["{{host}}"],
+							"path": [
+								"api",
+								"v1",
+								"speech",
+								"emotion",
+								"tips",
+								"abc123"
+							]
+						}
+					},
+					"status": "Internal Server Error",
+					"code": 500,
+					"body": "{\n    \"code\": 50006,\n    \"message\": \"生成建议失败\",\n    \"data\": {\n        \"task_id\": \"abc123\",\n        \"status\": \"failed\"\n    }\n}"
 				}
 			]
 		}
