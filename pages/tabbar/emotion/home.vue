@@ -7,7 +7,15 @@
     <view class="header">
         <image class="logo" src="/static/img/logo.png" mode="aspectFit"></image>
         <text class="title">黑洞吐槽</text>
+      
+      <!-- 添加音量控制按钮 -->
+      <view 
+        class="volume-control"
+        @tap="toggleSound"
+      >
+        <text class="iconfont" :class="isMuted ? 'icon-jingyin-F' : 'icon-yinliang-L'"></text>
       </view>
+    </view>
     
     <!-- WeatherDisplay 作为背景 -->
     <WeatherDisplay 
@@ -657,15 +665,27 @@ export default {
     },
 
     toggleSound() {
-      console.log('音量控制按钮被点击，当前静音状态:', this.isMuted);
       this.isMuted = !this.isMuted;
+      console.log('切换静音状态:', this.isMuted);
       
-      // 保存到缓存
+      // 保存静音状态到缓存
       try {
         uni.setStorageSync('weatherAudioMuted', this.isMuted);
-        console.log('新的静音状态已保存:', this.isMuted);
+        console.log('保存静音状态到缓存:', this.isMuted);
       } catch (e) {
         console.error('保存静音状态失败:', e);
+      }
+      
+      // 发送事件通知其他组件
+      uni.$emit('audioMuteChanged', this.isMuted);
+      
+      // 根据静音状态控制音频
+      if (this.audioContext) {
+        if (this.isMuted) {
+          this.audioContext.pause();
+        } else {
+          this.audioContext.play();
+        }
       }
     },
 
@@ -1166,21 +1186,20 @@ export default {
 }
 
 .volume-control {
-  position: fixed;
-  top: var(--status-bar-height);
-  right: 40rpx;
-  width: 80rpx;
-  height: 80rpx;
+  position: absolute;
+  right: 30rpx;
+  top: 110rpx; /* 增加顶部距离，避免被微信小程序控制图标遮挡 */
+  width: 60rpx;
+  height: 60rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(10px);
   border-radius: 50%;
-  z-index: 9999;
+  z-index: 100; /* 确保足够高的层级 */
   
   .iconfont {
-    font-size: 36rpx;
+    font-size: 32rpx;
     color: #ffffff;
   }
   
@@ -1829,29 +1848,47 @@ export default {
 }
 
 .header {
-    padding: 20rpx 30rpx;
+  position: relative;
+  padding: 20rpx 30rpx;
+  display: flex;
+  align-items: center;
+  z-index: 10;
+  
+  .logo {
+    width: 60rpx;
+    height: 60rpx;
+    border-radius: 30rpx;
+  }
+  
+  .title {
+    margin-left: 20rpx;
+    font-size: 36rpx;
+    font-weight: 500;
+    color: #fff;
+  }
+  
+  /* 音量控制按钮样式 */
+  .volume-control {
+    position: absolute;
+    right: 30rpx;
+    width: 60rpx;
+    height: 60rpx;
     display: flex;
     align-items: center;
-    background: linear-gradient(180deg, #0A0B1B 0%, rgba(10, 11, 27, 0.9) 100%);
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
     
-    .logo {
-      width: 60rpx;
-      height: 60rpx;
-      border-radius: 30rpx;
+    .iconfont {
+      font-size: 32rpx;
+      color: #ffffff;
     }
     
-    .title {
-      margin-left: 20rpx;
-      font-size: 36rpx;
-      font-weight: 500;
-      color: #fff;
-    }
-    
-    .more {
-      margin-left: auto;
-      color: #fff;
+    &:active {
+      background: rgba(255, 255, 255, 0.3);
     }
   }
+}
 
 /* 修复字体问题，使用正确的字体引用 */
 @font-face {
