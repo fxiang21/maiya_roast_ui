@@ -36,7 +36,7 @@
       <!-- 内容区域 -->
       <view class="content-area">
         <history v-if="currentTab === 'history'" ref="history"></history>
-        <stats v-if="currentTab === 'analysis'" ref="stats"></stats>
+        <stats v-if="currentTab === 'analysis'" ref="stats" :hasData="hasEmotionData"></stats>
       </view>
     </view>
   </template>
@@ -57,7 +57,8 @@
         currentTab: 'history',
         tabLineLeft: '0%',
         isTabSwitching: false,
-        _dataInitialized: false
+        _dataInitialized: false,
+        hasEmotionData: false
       }
     },
     
@@ -67,12 +68,15 @@
       const targetTab = options.tab || 'history'
       this.currentTab = targetTab
       this.tabLineLeft = targetTab === 'history' ? '0%' : '50%'
+      
+      this.checkEmotionDataExistence();
     },
     
     onShow() {
       console.log('echo.vue onShow')
+      this.checkEmotionDataExistence();
+      
       this.$nextTick(() => {
-        // 根据当前标签初始化数据
         this.initCurrentTabData(true)
         this._dataInitialized = true
       })
@@ -88,13 +92,68 @@
     },
     
     methods: {
+      async checkEmotionDataExistence() {
+        try {
+          const historyKey = 'emotion_history_cache';
+          const historyCache = uni.getStorageSync(historyKey);
+          
+          if (historyCache) {
+            const historyData = JSON.parse(historyCache);
+            this.hasEmotionData = historyData && historyData.length > 0;
+          } else {
+            this.hasEmotionData = false;
+          }
+          
+          if (!this.hasEmotionData) {
+            try {
+              const response = await this.checkHistoryDataExistence();
+              this.hasEmotionData = response.data && response.data.length > 0;
+            } catch (error) {
+              console.log('检查历史数据存在性失败:', error);
+              this.hasEmotionData = false;
+            }
+          }
+          
+          console.log('检查情感数据存在性:', this.hasEmotionData ? '有数据' : '无数据');
+        } catch (error) {
+          console.error('检查情感数据失败:', error);
+          this.hasEmotionData = false;
+        }
+      },
+      
+      checkHistoryDataExistence() {
+        return new Promise((resolve, reject) => {
+          uni.request({
+            url: 'YOUR_API_URL/emotions',
+            method: 'GET',
+            data: {
+              page: 1,
+              limit: 1
+            },
+            success: (res) => {
+              resolve(res);
+            },
+            fail: (err) => {
+              reject(err);
+            }
+          });
+        });
+      },
+      
       initCurrentTabData(forceRefresh = false) {
         console.log('初始化数据，当前标签：', this.currentTab)
         this.$nextTick(() => {
           if (this.currentTab === 'history') {
             this.initHistoryData();
           } else if (this.currentTab === 'analysis') {
-            this.initAnalysisData();
+            if (this.hasEmotionData) {
+              this.initAnalysisData();
+            } else {
+              console.log('没有情感数据，跳过加载分析');
+              if (this.$refs.stats && typeof this.$refs.stats.showEmptyState === 'function') {
+                this.$refs.stats.showEmptyState();
+              }
+            }
           }
         })
       },
@@ -111,21 +170,16 @@
         console.log('开始加载统计数据');
         try {
           if (this.$refs.stats) {
+            if (!this.hasEmotionData) {
+              if (typeof this.$refs.stats.showEmptyState === 'function') {
+                this.$refs.stats.showEmptyState();
+              }
+              return;
+            }
+            
             this.$refs.stats.initAnalysis();
-            // 检查是否已有数据，避免重复加载
-            // if (!this.$refs.stats.periodStatsData) {
-            //   this.$refs.stats.initAnalysis();
-            // } else {
-            //   console.log('分析数据已存在，跳过加载');
-            // }
           } else {
             console.warn('stats组件未找到');
-            // 延迟重试
-            setTimeout(() => {
-              if (this.$refs.stats && !this.$refs.stats.periodStatsData) {
-                this.$refs.stats.initAnalysis();
-              }
-            }, 300);
           }
         } catch (error) {
           console.error('加载统计数据失败:', error);
@@ -138,12 +192,17 @@
         this.currentTab = tab
         this.tabLineLeft = tab === 'history' ? '0%' : '50%'
         
-        // 添加组件可见性变化处理
         this.$nextTick(async () => {
           if (tab === 'analysis') {
             await this.$nextTick()
-            // 只调用一个方法，避免重复加载数据
-            this.initAnalysisData()
+            if (this.hasEmotionData) {
+              this.initAnalysisData()
+            } else {
+              console.log('没有情感数据，跳过加载分析');
+              if (this.$refs.stats && typeof this.$refs.stats.showEmptyState === 'function') {
+                this.$refs.stats.showEmptyState();
+              }
+            }
           } else {
             this.initHistoryData()
           }

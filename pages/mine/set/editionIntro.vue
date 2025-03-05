@@ -2,13 +2,14 @@
 <template>
   <view class="edition-intro">
     <image :src="config.logo" class="logo" />
-    <h1> {{config.name}}</h1>
+    <h1> {{config.name}}情绪管理系统</h1>
     <view class='version'>
       <!-- #ifdef APP-PLUS -->
       Version {{localVersion.version}}
       <!-- #endif -->
 	  <!-- #ifdef MP-WEIXIN -->
-	  小程序版本: {{localVersion.version}}  {{ localVersion.envVersion}}
+	  <!-- 小程序版本: {{localVersion.version}}  {{ localVersion.envVersion}} -->
+     版本号: V1.0
 	  <!--  #endif -->
     </view>
 

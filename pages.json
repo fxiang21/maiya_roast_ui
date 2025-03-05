@@ -20,7 +20,7 @@
 
 			"style": {
 				"navigationBarTitleText": "",
-				"navigationStyle": "custom", // 隐藏系统导航栏
+				"navigationStyle": "custom", 
 				"navigationBarTextStyle": "black",
 				"enablePullDownRefresh": true
 			}
@@ -30,7 +30,7 @@
 
 			"style": {
 				"navigationBarTitleText": "",
-				"navigationStyle": "custom", // 隐藏系统导航栏
+				"navigationStyle": "custom",
 				"navigationBarTextStyle": "black",
 				"enablePullDownRefresh": true
 			}
@@ -38,12 +38,12 @@
 		{
 			"path": "pages/tabbar/screen/fullScreen",
 			"style": {
-				"navigationStyle": "custom", // 隐藏系统导航栏
+				"navigationStyle": "custom", 
 				"app-plus": {
-					"animationType": "fade-in", // 设置fade-in淡入动画，为最合理的动画类型
-					"background": "transparent", // 背景透明
-					"backgroundColor": "rgba(0,0,0,0)", // 背景透明
-					"popGesture": "none" // 关闭IOS屏幕左边滑动关闭当前页面的功能
+					"animationType": "fade-in", 
+					"background": "transparent", 
+					"backgroundColor": "rgba(0,0,0,0)", 
+					"popGesture": "none" 
 				}
 			}
 		},
@@ -87,42 +87,23 @@
 		{
 			"root": "pages/mine",
 			"pages": [
-
 				{
 					"path": "signIn",
 					"style": {
 						"navigationBarTitleText": "签到"
 					}
 				}, 
-				// {
-				// 	"path": "myTracks",
-				// 	"style": {
-				// 		"navigationBarTitleText": "我的足迹",
-				// 		"enablePullDownRefresh": true,
-				// 		"navigationStyle": "custom"
-				// 	}
-				// },
 				{
 					"path": "myCollect",
 					"style": {
 						"navigationBarTitleText": "收藏",
-						"enablePullDownRefresh": true, //下拉刷新
+						"enablePullDownRefresh": true,
 						"navigationStyle": "custom",
 						"app-plus": {
 							"scrollIndicator": "none"
 						}
 					}
 				},
-				// {
-				// 	"path": "distribution/list",
-				// 	"style": {
-				// 		"navigationBarTitleText": "推广分佣",
-				// 		"app-plus": {
-				// 			//app页面不显示滚动条
-				// 			"scrollIndicator": "none"
-				// 		}
-				// 	}
-				// },
 				{
 					"path": "distribution/auth",
 					"style": {
@@ -167,7 +148,7 @@
 				{
 					"path": "im/list",
 					"style": {
-						"navigationStyle": "custom", // 隐藏系统导航栏
+						"navigationStyle": "custom", 
 						"enablePullDownRefresh": true,
 						"app-plus": {}
 
@@ -176,7 +157,7 @@
 				{
 					"path": "im/index",
 					"style": {
-						"navigationStyle": "custom", // 隐藏系统导航栏
+						"navigationStyle": "custom", 
 						"enablePullDownRefresh": true,
 						"app-plus": {}
 
@@ -367,17 +348,5 @@
 				"text": "个人中心"
 			}
 		]
-	},
-	// #todo 为什么要注释condition下代码？ 
-	// IOS plus.runtime.arguments 添加 condition节点后， 框架会修改 runtime.arguments
-	// 会影响什么功能？
-	//    -在h5中唤醒app会一直返回默认值 {"name":"","path":"","query":"","id":0}
-	"condition": { //模式配置，仅开发期间生效   
-		// "current": 0, //当前激活的模式(list 的索引项)
-		// "list": [{
-		// 	"name": "", //模式名称
-		// 	"path":"", //启动页面，必选
-		// 	"query": "" //启动参数，在页面的onLoad函数里面得到
-		// }]
 	}
 }

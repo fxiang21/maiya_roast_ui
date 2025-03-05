@@ -231,6 +231,12 @@ import DynamicBubbleChart from '@/utils/DynamicBubbleChart'
 export default {
   components: {
   },
+  props: {
+    hasData: {
+      type: Boolean,
+      default: false
+    }
+  },
   data() {
     return {
       periods: [
@@ -314,6 +320,7 @@ export default {
         "记录心情，发现规律",
         "让黑洞帮你分析情绪"
       ],
+      forceEmptyState: false,
     }
   },
 
@@ -454,14 +461,25 @@ export default {
       return Object.values(this.getTargetStats).reduce((sum, count) => sum + count, 0);
     },
 
-    // 添加空状态判断
-    showEmptyState() {
-      // 判断是否有统计数据且数据为空
-      return !this.isLoading && 
-             (!this.statsData || 
-              !this.statsData.statistics || 
-              (this.statsData.statistics && 
-               Object.keys(this.statsData.statistics).length === 0));
+    // 修改空状态判断
+    showEmptyState: {
+      get() {
+        // 如果父组件明确表示没有数据，或者强制显示空状态，则直接显示空状态
+        if (this.forceEmptyState) {
+          return true;
+        }
+        
+        // 原有逻辑
+        return !this.isLoading && 
+               (!this.statsData || 
+                !this.statsData.statistics || 
+                (this.statsData.statistics && 
+                 Object.keys(this.statsData.statistics).length === 0));
+      },
+      set(value) {
+        // 将设置操作映射到 forceEmptyState
+        this.forceEmptyState = value;
+      }
     },
     
     // 随机提示语
@@ -639,8 +657,18 @@ export default {
       this.currentRequests = [];
     },
 
-    // 优化 initAnalysis 方法，确保组件可见时立即加载数据
+    // 修改initAnalysis方法 - 添加对hasData的检查
     initAnalysis() {
+      console.log('initAnalysis被调用')
+      if (this.forceEmptyState) {
+        console.log('没有情感数据，显示空状态');
+        return;
+      }
+      
+      // 重置空状态强制标志
+      this.forceEmptyState = false;
+      
+      // 原有初始化逻辑
       console.log('统一初始化分析页面');
       
       // 无论是否已初始化，都尝试加载数据
@@ -653,14 +681,13 @@ export default {
       // 使用 nextTick 确保 DOM 已渲染
       this.$nextTick(async () => {
         try {
-          // 先初始化图表容器（如果需要）
+          // 使用请求锁定机制加载数据
+          this.loadAllStatsWithLock();
+
+          // 初始化图表容器（如果需要）
           if (shouldInitBubbles) {
             await this.initDynamicBubbles(true);
           }
-          
-          // 使用请求锁定机制加载数据
-          this.loadAllStatsWithLock();
-          
           console.log('分析页面初始化完成');
         } catch (error) {
           console.error('初始化分析页面失败:', error);
@@ -671,6 +698,7 @@ export default {
 
     // 添加带锁定机制的数据加载方法
     loadAllStatsWithLock() {
+      console.log('loadAllStatsWithLock被调用')
       // 如果锁定中，跳过请求
       if (this._requestLock) {
         console.log('请求已锁定，跳过重复请求');
@@ -923,6 +951,7 @@ export default {
 
     // 修改 loadAllStats 方法，确保数据加载和气泡更新的正确顺序
     async loadAllStats() {
+      console.log('loadAllStats被调用')
       // 如果已经在加载中，则跳过
       if (this.isLoading) {
         console.log('数据正在加载中，跳过重复请求');
@@ -983,22 +1012,22 @@ export default {
       }
     },
 
-    fetchEmotionStats(period) {
-      return new Promise((resolve, reject) => {
-        const requestTask = getEmotionStats(
-          period,
-          (res) => {
-            this.currentRequests = this.currentRequests.filter(t => t !== requestTask);
-            resolve(res);
-          },
-          (err) => {
-            this.currentRequests = this.currentRequests.filter(t => t !== requestTask);
-            reject(err);
-          }
-        );
-        this.currentRequests.push(requestTask);
-      });
-    },
+    // fetchEmotionStats(period) {
+    //   return new Promise((resolve, reject) => {
+    //     const requestTask = getEmotionStats(
+    //       period,
+    //       (res) => {
+    //         this.currentRequests = this.currentRequests.filter(t => t !== requestTask);
+    //         resolve(res);
+    //       },
+    //       (err) => {
+    //         this.currentRequests = this.currentRequests.filter(t => t !== requestTask);
+    //         reject(err);
+    //       }
+    //     );
+    //     this.currentRequests.push(requestTask);
+    //   });
+    // },
 
     fetchPeriodStats(period) {
       return new Promise((resolve, reject) => {
@@ -1218,6 +1247,7 @@ export default {
 
     // 修改 checkVisibility 方法
     checkVisibility() {
+      console.log('checkVisibility被调用')
       const query = uni.createSelectorQuery().in(this);
       query.select('.stats-container').boundingClientRect(data => {
         const isVisible = data && data.width > 0 && data.height > 0;
@@ -1226,9 +1256,11 @@ export default {
         if (isVisible) {
           // 如果组件可见，则初始化并加载数据
           if (!this._initialized) {
+            console.log('初始化分析')
             this.initAnalysis();
           } else if (!this.periodStatsData && !this._requestLock) {
             // 如果已初始化但没有数据且未锁定，则加载数据
+            console.log('加载数据')
             this.loadAllStatsWithLock();
           }
         }
@@ -1295,6 +1327,12 @@ export default {
       uni.switchTab({
         url: '/pages/tabbar/emotion/home'
       });
+    },
+
+    // 修改显示空状态的方法
+    showEmptyState() {
+      this.forceEmptyState = true;
+      this.abortAllRequests();
     },
   },
 

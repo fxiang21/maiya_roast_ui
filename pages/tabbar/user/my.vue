@@ -16,7 +16,7 @@
       <view class="head-2" v-else>
         <view class="user-name">登录/注册</view>
       </view>
-      <u-icon style="display: flex;align-items: flex-start;" name="arrow-right"></u-icon>
+      <u-icon style="display: flex;align-items: flex-start;" name="arrow-right" color="#ffffff"></u-icon>
     </view>
     <!-- 积分，优惠券，关注， -->
     <!-- <div class="pointBox box"> -->
@@ -74,6 +74,14 @@
 
     <tool />
 
+    <!-- 流星效果 -->
+    <view class="meteor-container">
+      <view v-for="(meteor, index) in meteors" :key="index" 
+            class="meteor" 
+            :style="{ top: meteor.top + 'rpx', left: meteor.left + 'rpx', animationDelay: meteor.delay + 's' }">
+      </view>
+    </view>
+
   </view>
 </template>
 <script>
@@ -96,11 +104,13 @@ export default {
       couponNum: "",
       footNum: "",
       walletNum: "",
+      meteors: []
     };
   },
   onLoad() {
     console.log("onLoad:", this.userInfo)
-   },
+    this.generateMeteors();
+  },
   onShow() {
     console.log("onShow:", this.userInfo)
     this.userInfo = this.$options.filters.isLogin() || {};
@@ -154,6 +164,17 @@ export default {
     //     this.walletNum = res[2].data.result.memberWallet;
     //   });
     // },
+    // 生成随机流星
+    generateMeteors() {
+      const meteorCount = 15;
+      for (let i = 0; i < meteorCount; i++) {
+        this.meteors.push({
+          top: Math.random() * 1000,
+          left: Math.random() * 750,
+          delay: Math.random() * 5
+        });
+      }
+    }
   },
 };
 </script>
@@ -172,7 +193,33 @@ body {
 }
 
 .user {
+  position: relative;
+  min-height: 100vh;
+  background: linear-gradient(180deg, #0A0B1B 0%, rgba(10, 11, 27, 0.9) 100%);
+  overflow: hidden;
+  
+  /* 星空背景 */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+      radial-gradient(1px 1px at 25% 15%, white, transparent),
+      radial-gradient(1px 1px at 50% 40%, white, transparent),
+      radial-gradient(1px 1px at 75% 25%, white, transparent),
+      radial-gradient(2px 2px at 20% 60%, white, transparent),
+      radial-gradient(2px 2px at 40% 80%, white, transparent),
+      radial-gradient(2px 2px at 80% 70%, white, transparent);
+    background-repeat: no-repeat;
+    z-index: 0;
+  }
+  
   .header {
+    position: relative;
+    z-index: 1;
     max-width: 100%;
     padding: calc(50rpx + var(--status-bar-height)) 30rpx 0 6%;
     height: calc(var(--status-bar-height) + 360rpx);
@@ -185,6 +232,20 @@ body {
     color: #ffffff;
     display: flex;
     justify-content: space-between;
+    
+    /* 添加深色渐变叠加层 */
+    &::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(180deg, rgba(10, 11, 27, 0.7) 0%, rgba(10, 11, 27, 0.5) 100%);
+      border-bottom-left-radius: 30rpx;
+      border-bottom-right-radius: 30rpx;
+      z-index: -1;
+    }
 
     .head-1 {
       text-align: center;
@@ -198,7 +259,8 @@ body {
         height: 144rpx;
         border-radius: 50%;
         margin-bottom: 30rpx;
-        border: 3px solid #fff;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 0 0 20rpx rgba(124, 77, 255, 0.4);
       }
 
       .edti-head {
@@ -290,6 +352,8 @@ body {
 
 .user-name {
   font-size: 34rpx;
+  color: #ffffff;
+  text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.3);
 }
 
 .bag {
@@ -317,5 +381,39 @@ body {
 
 .bag5 {
   background: #28ccb0;
+}
+
+/* 流星效果 */
+.meteor-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.meteor {
+  position: absolute;
+  width: 4rpx;
+  height: 100rpx;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.8));
+  transform: rotate(-45deg);
+  animation: meteor 3s linear infinite;
+}
+
+@keyframes meteor {
+  0% {
+    opacity: 0;
+    transform: translateX(0) translateY(0) rotate(-45deg);
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-200rpx) translateY(200rpx) rotate(-45deg);
+  }
 }
 </style>

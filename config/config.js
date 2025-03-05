@@ -1,5 +1,5 @@
-const name = "麦芽管家"; //全局商城name
-const schemeName = "maiya"; //唤醒app需要的schemeName
+const name = "黑洞吐槽"; //全局商城name
+const schemeName = "blackhole"; //唤醒app需要的schemeName
 export default {
   name: name,
   schemeLink: `${schemeName}://`, //唤起app地址
@@ -9,8 +9,8 @@ export default {
   aMapKey: "1f78544934b66c9fbc0104117f663975", //在高德中申请Web服务key
   scanAuthNavigation: ["https://m-b2b2c.pickmall.cn/"], //扫码认证跳转域名配置 会根据此处配置的路由进行跳转
   iosAppId: "id1564638363", //AppStore的应用地址id 具体在分享->拷贝链接中查看
-  logo: "https://maiya-prod.oss-cn-shanghai.aliyuncs.com/icon/maiya.png", //logo地址
-  customerServiceMobile: "19921349872", //客服电话
+  logo: "https://maiya-prod.oss-cn-shanghai.aliyuncs.com/icon/blackholelogo.png", //logo地址
+  customerServiceMobile: "无", //客服电话
   customerServiceEmail: "bd@maiya.top", //客服邮箱
   imWebSrc: "https://im.pickmall.cn", //IM地址
   baseWsUrl: "wss://im-api.pickmall.cn/lili/webSocket", // IM WS 地址

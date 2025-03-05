@@ -1,5 +1,14 @@
 <template>
   <view class="container">
+    <!-- 状态栏 -->
+    <view class="status-bar" :style="{ height: statusBarHeight + 'px' }"></view>
+    
+    <!-- 头部导航 -->
+    <view class="header">
+        <image class="logo" src="/static/img/logo.png" mode="aspectFit"></image>
+        <text class="title">黑洞吐槽</text>
+      </view>
+    
     <!-- WeatherDisplay 作为背景 -->
     <WeatherDisplay 
       :weatherType="weatherType" 
@@ -16,123 +25,118 @@
       @updateBubbles="updateBubbles"
     />
     
-    <!-- 内容层，确保在背景之上 -->
-    <view class="content" style="position: relative; z-index: 2;">
-      <!-- 顶部栏 -->
-      <view class="top-section">
-        <!-- 日期 -->
-        <view class="date-wrapper">
-          <text class="date-text">{{ currentDate }}</text>
-          <view class="date-underline"></view>
-        </view>
+    <!-- 情绪内容区域 - 固定大小 -->
+    <view class="main-content">
+      <view class="emotion-content-area" :class="{ 'hidden': showBlackHole }">
+        <!-- 黑洞图标 -->
+        <!-- <image 
+          class="emotion-icon" 
+          src="https://maiya-prod.oss-cn-shanghai.aliyuncs.com/icon/hole.png"
+          mode="aspectFit"
+        ></image> -->
         
-        <!-- 音量控制按钮，现在对所有天气都显示 -->
-        <view 
-          class="volume-control"
-          @tap="toggleSound"
-        >
-          <text class="iconfont" :class="isMuted ? 'icon-jingyin-F' : 'icon-yinliang-L'"></text>
-        </view>
+        <!-- 根据是否有数据显示不同内容 -->
+        <block v-if="!emotions || emotions.length === 0">
+          <!-- 无数据时的提示 - 居中显示 -->
+          <view class="empty-state">
+            <view class="black-hole-animation">
+              <view class="black-hole-ring"></view>
+              <view class="black-hole-center">
+                <text class="recording-text" v-if="isRecording">录音中...</text>
+                <text class="recording-text" v-else-if="recordDuration > 0">已接收{{recordDuration}}s</text>
+              </view>
+            </view>
+            <view class="empty-content">
+              <view class="encouragement-empty">
+                <text class="slogan-text">{{ randomTip }}</text>
+              </view>
+            </view>
+          </view>
+        </block>
+        
+        <block v-else>
+          <!-- 调整顺序：情绪气泡图在上，鼓励语句在下 -->
+          
+          <!-- 情绪气泡图区域 - 放在上方 -->
+          <view class="emotion-bubbles-container">
+            <view class="emotion-bubbles">
+              <view
+                v-for="(emotion, index) in emotions"
+                :key="index"
+                class="bubble"
+                :style="{
+                  width: calculateBubbleSize(emotion.percentage) + 'rpx',
+                  height: calculateBubbleSize(emotion.percentage) + 'rpx',
+                  background: emotion.color,
+                  transform: getBubbleTransform(emotion, index),
+                  opacity: getBubbleOpacity(index)
+                }"
+              >
+                <text class="emotion-label">{{ emotion.name }}</text>
+                <text class="emotion-value">{{ emotion.percentage }}%</text>
+              </view>
+            </view>
+          </view>
+          
+          <!-- 鼓励语句区域 - 移除光标 -->
+          <view class="encouragement-section">
+            <view class="encouragement">
+              <text 
+                v-for="(sentence, index) in displaySentences" 
+                :key="index" 
+                class="sentence" 
+                :class="{ 'visible': sentence.visible }"
+              >
+                {{ sentence.text }}
+              </text>
+            </view>
+          </view>
+        </block>
       </view>
-
-      <!-- 顶部信息区域 -->
-      <view class="info-section">
-        <view class="weather-icon">
-          <image 
-            :src="weatherIconUrl" 
-            mode="aspectFit"
-            :style="{ filter: 'brightness(0) invert(1)' }"
-          ></image>
-        </view>
-      </view>
-
-      <!-- 鼓励语句 -->
+    </view>
+    
+    <!-- 输入区域 -->
+    <view class="input-section" :class="{ 'no-bubbles': emotions.length === 0 }">
+      <!-- 切换按钮 -->
       <view 
-        class="encouragement" 
-        :class="{ 'no-bubbles': emotions.length === 0 }"
-        @tap="handleEncouragementTap"
+        class="switch-input-mode" 
+        @tap="switchInputMode"
+        :class="{ 'disabled': !canInteract }"
       >
+        <text class="iconfont" :class="isVoiceMode ? 'icon-keyboard' : 'icon-mic'"></text>
+      </view>
+      
+      <!-- 文字输入框 - 默认显示 -->
+      <view v-if="!isVoiceMode" class="text-input-area">
+        <input 
+          type="text" 
+          v-model="inputText"
+          placeholder="输入你想说的话..."
+          @confirm="handleTextSubmit"
+          :disabled="!canInteract"
+        />
         <view 
-          v-for="(sentence, index) in displaySentences" 
-          :key="index"
-          class="sentence"
-          :style="{ 
-            opacity: sentence.visible ? 1 : 0,
-            transform: sentence.visible ? 'translateY(0)' : 'translateY(10rpx)'
+          class="submit-btn" 
+          @tap="handleTextSubmit"
+          :class="{
+            'submit-btn--disabled': !canInteract || !inputText.trim(),
+            'submit-btn--active': canInteract && inputText.trim()
           }"
         >
-          {{ sentence.text }}
-        </view>
-        <text v-if="isTyping" class="cursor">|</text>
-      </view>
-
-      <!-- 情绪气泡图 -->
-      <view class="emotion-bubbles-container" v-if="emotions.length > 0 && !hideBubbles">
-        <view class="emotion-bubbles">
-          <view 
-            v-for="(emotion, index) in emotions" 
-            :key="index"
-            class="bubble"
-            :id="`bubble-${index}`"
-            :style="{
-              width: calculateBubbleSize(emotion.percentage) + 'rpx',
-              height: calculateBubbleSize(emotion.percentage) + 'rpx',
-              backgroundColor: emotion.color,
-              transform: getBubbleTransform(emotion, index),
-              position: 'absolute',
-              opacity: getBubbleOpacity(index),
-              transition: blackHoleActive ? 'transform 0.5s, opacity 0.5s' : 'none'
-            }"
-          >
-            <text class="emotion-label">{{emotion.name}}</text>
-            <text class="emotion-value">{{emotion.percentage}}%</text>
-          </view>
+          <text class="iconfont icon-send"></text>
         </view>
       </view>
-
-      <!-- 输入区域 -->
-      <view class="input-section" :class="{ 'no-bubbles': emotions.length === 0 }">
-        <!-- 切换按钮 -->
+      
+      <!-- 语音输入按钮 -->
+      <view v-else class="voice-input-area">
         <view 
-          class="switch-input-mode" 
-          @tap="switchInputMode"
+          class="record-btn"
+          @touchstart="startRecord"
+          @touchend="stopRecord"
+          @touchcancel="stopRecord"
           :class="{ 'disabled': !canInteract }"
         >
-          <text class="iconfont" :class="isVoiceMode ? 'icon-keyboard' : 'icon-mic'"></text>
-        </view>
-        
-        <!-- 文字输入框 - 默认显示 -->
-        <view v-if="!isVoiceMode" class="text-input-area">
-          <input 
-            type="text" 
-            v-model="inputText"
-            placeholder="输入你想说的话..."
-            @confirm="handleTextSubmit"
-            :disabled="!canInteract"
-          />
-          <view 
-            class="submit-btn" 
-            @tap="handleTextSubmit"
-            :class="{
-              'submit-btn--disabled': !canInteract || !inputText.trim(),
-              'submit-btn--active': canInteract && inputText.trim()
-            }"
-          >
-            <text class="iconfont icon-send"></text>
-          </view>
-        </view>
-        
-        <!-- 语音输入按钮 -->
-        <view v-else class="voice-input-area">
-          <view 
-            class="record-btn"
-            @touchstart="startRecord"
-            @touchend="stopRecord"
-            @touchcancel="stopRecord"
-            :class="{ 'disabled': !canInteract }"
-          >
-            <text>{{ isRecording ? '松开结束' : '长按开始吐槽' }}</text>
-          </view>
+          <text>{{ isRecording ? '松开结束' : '长按开始吐槽' }}</text>
         </view>
       </view>
     </view>
@@ -178,6 +182,24 @@ export default {
       hideBubbles: false, // 控制气泡显示/隐藏
       blackHoleActive: false, // 黑洞动画是否激活
       bubblesData: [], // 存储气泡动画数据
+      containerFixed: false,
+      containerPosition: {
+        x: 375, // 默认屏幕中心点（750rpx宽度的一半）
+        y: 500  // 根据实际布局调整
+      },
+      randomTips: [
+        '把情绪倾诉给黑洞，让它带走所有烦恼...',
+        '再糟糕的一天，也会过去',
+        '你的情绪很重要，记录下来会让你更好地理解自己',
+        '说出来，会感觉好一些',
+        '今天发生了什么？告诉黑洞吧'
+      ],
+      randomTip: '',
+      meteors: [], // 用于存储流星数据
+      windowInfo: null, // 用于存储窗口信息
+      typingText: '', // 当前正在打字的文本
+      fullText: '', // 完整的文本
+      typingSpeed: 50, // 打字速度(毫秒/字符)
     }
   },
 
@@ -217,10 +239,31 @@ export default {
 
     // 初始化时显示默认鼓励语
     this.startTyping(this.defaultEncouragement);
+
+    // 随机选择一条提示语
+    this.randomTip = this.randomTips[Math.floor(Math.random() * this.randomTips.length)];
+    
+    // 获取窗口信息，替代废弃的getSystemInfoSync
+    // #ifdef MP-WEIXIN
+    this.windowInfo = wx.getWindowInfo();
+    // #endif
+    
+    // #ifndef MP-WEIXIN
+    this.windowInfo = uni.getSystemInfoSync();
+    // #endif
   },
 
   mounted() {
     console.log('组件挂载完成，当前 weatherType:', this.weatherType);
+    // 组件挂载时获取一次位置，之后不再获取
+    if (!this.containerFixed) {
+      const sysInfo = uni.getSystemInfoSync();
+      this.containerPosition = {
+        x: sysInfo.windowWidth / 2,
+        y: sysInfo.windowHeight / 2 - 100
+      };
+      this.containerFixed = true;
+    }
   },
 
   onShow() {
@@ -262,6 +305,10 @@ export default {
     } catch (e) {
       console.error('读取静音状态失败:', e);
     }
+
+    // 获取状态栏高度
+    const systemInfo = uni.getSystemInfoSync();
+    this.statusBarHeight = systemInfo.statusBarHeight;
   },
 
   // 监听标签页切换
@@ -305,6 +352,11 @@ export default {
     initRecorder() {
       recorderManager.onStop(async (res) => {
         const { tempFilePath } = res;
+        // 添加标记以防重复调用
+        if (this.isSubmitting) return;
+        this.isSubmitting = true;
+        
+        console.log('开始上传音频 initRecorder');
         try {
           await uploadEmotionAudio(
             tempFilePath,
@@ -332,6 +384,12 @@ export default {
           });
         } finally {
           this.isLoading = false; // 结束加载
+          this.isSubmitting = false; // 重置提交标记
+          // 确保清除超时计时器
+          if (this.submitTimeout) {
+            clearTimeout(this.submitTimeout);
+            this.submitTimeout = null;
+          }
         }
       });
 
@@ -339,6 +397,8 @@ export default {
       recorderManager.onError((error) => {
         console.error('录音错误:', error);
         this.isRecording = false;
+        this.isLoading = false;
+        this.isSubmitting = false;
         uni.showToast({
           title: '录音出错',
           icon: 'none'
@@ -363,7 +423,7 @@ export default {
 
     // 停止录音
     stopRecord() {
-      if (!this.isRecording) return;
+      if (!this.isRecording || this.isSubmitting) return;
       
       this.isRecording = false;
       this.isLoading = true;
@@ -401,6 +461,7 @@ export default {
         this.submitTimeout = setTimeout(() => {
           if (this.isLoading) {
             this.isLoading = false;
+            this.isSubmitting = false;
             this.showBlackHole = false;
             this.hideBubbles = false;
             uni.showToast({
@@ -616,207 +677,200 @@ export default {
     
     // 处理文本提交
     handleTextSubmit() {
-      if (!this.canInteract || !this.inputText.trim()) return;
+      console.log('handleTextSubmit');
+      if (!this.canInteract || !this.inputText.trim() || this.isSubmitting) return;
       
       const currentText = this.inputText.trim();
       this.isSubmitting = true;
       
-      // 获取气泡容器位置作为黑洞起始点（修改为获取气泡容器中心点）
-      const query = uni.createSelectorQuery().in(this);
-      query.select('.emotion-bubbles-container').boundingClientRect(data => {
-        if (data) {
-          this.blackHolePosition = {
-            x: data.left + data.width / 2,
-            y: data.top + data.height / 2
-          };
-          this.showBlackHole = true;
-        } else {
-          // 获取输入框位置作为备选
-          query.select('.text-input-area').boundingClientRect(inputData => {
-            if (inputData) {
-              this.blackHolePosition = {
-                x: inputData.left + inputData.width / 2,
-                y: inputData.top - 100 // 向上偏移确保黑洞在气泡区域
-              };
-            } else {
-              // 使用屏幕中心作为默认位置
-              const sysInfo = {};
-              // #ifdef MP-WEIXIN
-              sysInfo.windowWidth = wx.getWindowInfo().windowWidth;
-              sysInfo.windowHeight = wx.getWindowInfo().windowHeight;
-              // #endif
-              // #ifndef MP-WEIXIN
-              const tempInfo = uni.getSystemInfoSync();
-              sysInfo.windowWidth = tempInfo.windowWidth;
-              sysInfo.windowHeight = tempInfo.windowHeight;
-              // #endif
-              
-              this.blackHolePosition = {
-                x: sysInfo.windowWidth / 2,
-                y: sysInfo.windowHeight / 2 - 100
-              };
+      // 直接使用预先计算好的位置
+      this.blackHolePosition = this.containerPosition;
+      this.showBlackHole = true;
+      
+      // 设置超时保护
+      this.submitTimeout = setTimeout(() => {
+        this.resetAllStates();
+        this.showBlackHole = false;
+        uni.showToast({
+          title: '请求超时，请重试',
+          icon: 'none'
+        });
+      }, 5000);
+      
+      // 移除 await 关键字，使用 Promise 链式调用
+      console.log("uploadEmotionAudio.....................................................")
+      uploadEmotionAudio(
+        null,
+        (response) => {
+          try {
+            // 开始渲染过程
+            this.isRendering = true;
+            
+            // 清除超时定时器
+            if (this.submitTimeout) {
+              clearTimeout(this.submitTimeout);
+              this.submitTimeout = null;
             }
-            this.showBlackHole = true;
-          }).exec();
-        }
-        
-        // 设置超时保护
-        this.submitTimeout = setTimeout(() => {
-          this.resetAllStates();
-          this.showBlackHole = false;
-          uni.showToast({
-            title: '请求超时，请重试',
-            icon: 'none'
-          });
-        }, 5000);
-        
-        // 移除 await 关键字，使用 Promise 链式调用
-        uploadEmotionAudio(
-          null,
-          (response) => {
-            try {
-              // 开始渲染过程
-              this.isRendering = true;
-              
-              // 清除超时定时器
-              if (this.submitTimeout) {
-                clearTimeout(this.submitTimeout);
-                this.submitTimeout = null;
-              }
-              
-              // 清空输入
-              if (this.inputText === currentText) {
-                this.inputText = '';
-              }
-              
-              // 处理响应数据
-              this.stResult = response.data.text;
-              this.processEmotions(response);
-              
-              // 使用响应中的鼓励语，如果没有则使用默认值
-              const encouragementText = response.data.emotion.encourage || this.defaultEncouragement;
-              this.startTyping(encouragementText);
-              
-              this.updateWeatherType(response.data.emotion.weather || 'Cloudy');
-              this.saveLastEmotion();
-              
-              // 等待一小段时间确保渲染完成
-              setTimeout(() => {
-                this.resetAllStates();
-              }, 500);
-            } catch (error) {
-              console.error('处理响应失败:', error);
+            
+            // 清空输入
+            if (this.inputText === currentText) {
+              this.inputText = '';
+            }
+            
+            // 处理响应数据
+            this.stResult = response.data.text;
+            this.processEmotions(response);
+            
+            // 使用响应中的鼓励语，如果没有则使用默认值
+            const encouragementText = response.data.emotion.encourage || this.defaultEncouragement;
+            this.startTyping(encouragementText);
+            
+            this.updateWeatherType(response.data.emotion.weather || 'Cloudy');
+            this.saveLastEmotion();
+            
+            // 等待一小段时间确保渲染完成
+            console.log('等待一小段时间确保渲染完成');
+            setTimeout(() => {
               this.resetAllStates();
-              uni.showToast({
-                title: '处理失败',
-                icon: 'none'
-              });
-            }
-          },
-          (error) => {
-            console.error('请求失败:', error);
+            }, 500);
+          } catch (error) {
+            console.error('处理响应失败:', error);
             this.resetAllStates();
             uni.showToast({
-              title: error.message || '请求失败',
+              title: '处理失败',
               icon: 'none'
             });
-          },
-          { text: currentText }
-        );
-      }).exec();
+          }
+        },
+        (error) => {
+          console.error('请求失败:', error);
+          this.resetAllStates();
+          uni.showToast({
+            title: error.message || '请求失败',
+            icon: 'none'
+          });
+        },
+        { text: currentText }
+      );
     },
 
     // 黑洞动画结束回调 - 修改逻辑
     onBlackHoleAnimationEnd() {
+      console.log('黑洞动画结束');
       this.showBlackHole = false;
       this.blackHoleActive = false;
       
-      // 如果已经有情绪数据，不应该清空
-      if (this.emotions.length === 0) {
-        this.hideBubbles = true;
-      } else {
-        // 如果有情绪数据，应该显示它们
+      if (this.emotions && this.emotions.length > 0) {
+        // 有情绪数据时，显示气泡
         this.hideBubbles = false;
       }
     },
 
-    // 重置所有状态 - 确保重置hideBubbles
+    // 重置所有状态 - 确保重置标记
     resetAllStates() {
+      console.log('重置所有状态----------');
       this.isLoading = false;
       this.isSubmitting = false;
       this.isRendering = false;
       this.showBlackHole = false;
+      this.blackHoleActive = false;
+      
       // 如果有情绪数据，应该显示
-      if (this.emotions.length > 0) {
+      if (this.emotions && this.emotions.length > 0) {
         this.hideBubbles = false;
       }
+      
       if (this.submitTimeout) {
         clearTimeout(this.submitTimeout);
         this.submitTimeout = null;
       }
     },
 
-    // 将文本按标点符号分句，并去掉每句末尾的标点
-    splitIntoSentences(text) {
-      // 按照中文标点符号分割文本
-      return text
-        .split(/[，。！？；]/g)
-        .map(sentence => sentence.trim()) // 去除空白字符
-        .filter(sentence => sentence.length > 0) // 过滤空字符串
-        .map(sentence => ({
-          text: sentence,  // 不再添加标点符号
-          visible: false
-        }));
-    },
-
-    // 开始打字效果
-    startTyping(text, callback) {
-      this.stopTyping();
-      this.displaySentences = this.splitIntoSentences(text);
-      this.isTyping = true;
-      this.currentSentenceIndex = 0;
+    // 获取主要情绪的颜色
+    getPrimaryEmotionColor() {
+      if (!this.emotions || this.emotions.length === 0) {
+        return { start: '#7C4DFF', end: '#448AFF' }; // 默认渐变色
+      }
       
-      const showNextSentence = () => {
-        if (this.currentSentenceIndex < this.displaySentences.length) {
-          // 显示当前句子
-          this.$set(
-            this.displaySentences[this.currentSentenceIndex], 
-            'visible', 
-            true
-          );
-          
-          // 设置下一句的延时
-          this.currentSentenceIndex++;
-          if (this.currentSentenceIndex < this.displaySentences.length) {
-            this.typingTimer = setTimeout(showNextSentence, 800); // 每句之间的延迟
-          } else {
-            this.isTyping = false;
-            if (callback) callback();
-          }
-        }
-      };
+      // 获取百分比最高的情绪
+      const primaryEmotion = [...this.emotions].sort((a, b) => b.percentage - a.percentage)[0];
+      const color = primaryEmotion.color;
       
-      showNextSentence();
+      // 为渐变创建一个稍微不同的结束颜色
+      const endColor = this.adjustColor(color, 20);
+      
+      return { start: color, end: endColor };
     },
-
-    // 停止打字效果
-    stopTyping() {
+    
+    // 调整颜色亮度
+    adjustColor(hex, percent) {
+      // 简单的颜色亮度调整
+      const num = parseInt(hex.replace('#', ''), 16);
+      const r = (num >> 16) + percent;
+      const g = ((num >> 8) & 0x00FF) + percent;
+      const b = (num & 0x0000FF) + percent;
+      
+      const newR = r > 255 ? 255 : r < 0 ? 0 : r;
+      const newG = g > 255 ? 255 : g < 0 ? 0 : g;
+      const newB = b > 255 ? 255 : b < 0 ? 0 : b;
+      
+      return '#' + ((newR << 16) | (newG << 8) | newB).toString(16).padStart(6, '0');
+    },
+    
+    // 修复getHighlightClass方法，使用数据属性
+    getHighlightClass(sentence, index) {
+      return sentence && sentence.highlight === true;
+    },
+    
+    // 完全重写打字效果方法 - 字符级别打字
+    startTyping(text) {
+      if (!text) return;
+      
+      // 清除之前的定时器
       if (this.typingTimer) {
-        clearTimeout(this.typingTimer);
-        this.typingTimer = null;
+        clearInterval(this.typingTimer);
       }
-      this.isTyping = false;
+      
+      // 保存完整文本
+      this.fullText = text;
+      // 初始化打字文本为空
+      this.typingText = '';
+      
+      // 初始化句子数组，只有一个元素
+      this.displaySentences = [{
+        text: '',
+        visible: true,
+        highlight: true
+      }];
+      
+      this.isTyping = true;
+      let charIndex = 0;
+      
+      // 设置定时器，一个字符一个字符地显示
+      this.typingTimer = setInterval(() => {
+        if (charIndex < this.fullText.length) {
+          // 添加下一个字符
+          this.typingText += this.fullText.charAt(charIndex);
+          // 更新显示的文本
+          this.$set(this.displaySentences[0], 'text', this.typingText);
+          charIndex++;
+        } else {
+          // 完成打字
+          clearInterval(this.typingTimer);
+          this.isTyping = false;
+        }
+      }, this.typingSpeed);
     },
 
-    // 处理点击事件 - 立即显示所有文本
-    handleEncouragementTap() {
-      if (this.isTyping) {
-        this.stopTyping();
-        this.displaySentences.forEach(sentence => {
-          sentence.visible = true;
-        });
-        this.isTyping = false;
-      }
+    // 处理鼓励文本 - 在获取到情绪分析结果后调用
+    handleEncouragementText(emotionResult) {
+      // ... 其他处理逻辑保持不变 ...
+      
+      // 获取鼓励文本
+      const encouragementText = this.getEncouragementText(emotionResult);
+      
+      // 开始打字效果
+      this.startTyping(encouragementText);
     },
 
     // 开始隐藏气泡
@@ -832,7 +886,7 @@ export default {
       }));
     },
     
-    // 更新气泡位置和样式
+    // 更新气泡位置和样式 - 使用新API获取窗口信息
     updateBubbles(data) {
       const { progress, blackHolePosition } = data;
       
@@ -851,8 +905,8 @@ export default {
         const bubbleX = emotion.offsetX + bubbleSize / 2;
         const bubbleY = emotion.offsetY + bubbleSize / 2;
         
-        // 将rpx转换为px
-        const rpxRatio = uni.getSystemInfoSync().windowWidth / 750;
+        // 将rpx转换为px - 使用缓存的窗口信息，避免重复调用API
+        const rpxRatio = this.windowInfo.windowWidth / 750;
         const bubbleXPx = bubbleX * rpxRatio;
         const bubbleYPx = bubbleY * rpxRatio;
         
@@ -888,10 +942,30 @@ export default {
       }
       return 1;
     },
+
+    // 停止打字效果
+    stopTyping() {
+      if (this.typingTimer) {
+        clearInterval(this.typingTimer);
+        this.typingTimer = null;
+      }
+      this.isTyping = false;
+    },
+
+    // 移除流星相关方法
+    initMeteors() {
+      // 不再初始化流星
+      console.log('流星效果已禁用');
+    },
+    
+    addMeteor() {
+      // 空方法，不再添加流星
+    }
   },
 
   // 组件销毁时清理
   beforeDestroy() {
+    console.log('组件销毁');
     this.resetAllStates();
   }
 }
@@ -902,6 +976,155 @@ export default {
   position: relative;
   width: 100%;
   height: 100vh;
+  background: linear-gradient(180deg, #0A0B1B 0%, rgba(10, 11, 27, 0.9) 100%);
+  overflow: hidden;
+}
+
+/* 添加流星效果 */
+.container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(1px 1px at 25% 15%, white, transparent),
+    radial-gradient(1px 1px at 50% 40%, white, transparent),
+    radial-gradient(1px 1px at 75% 25%, white, transparent),
+    radial-gradient(2px 2px at 20% 60%, white, transparent),
+    radial-gradient(2px 2px at 40% 80%, white, transparent),
+    radial-gradient(2px 2px at 80% 70%, white, transparent);
+  background-repeat: no-repeat;
+  z-index: 0;
+}
+
+/* 流星动画 */
+@keyframes meteor {
+  0% {
+    transform: rotate(-45deg) translateX(0);
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(-45deg) translateX(-500px);
+    opacity: 0;
+  }
+}
+
+.meteor {
+  position: absolute;
+  width: 100px;
+  height: 2px;
+  background: linear-gradient(to right, rgba(255,255,255,0.8), transparent);
+  animation: meteor 6s linear infinite;
+  z-index: 1;
+}
+
+.emotion-icon {
+  width: 180rpx;
+  height: 180rpx;
+  position: absolute;
+  top: 40rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  opacity: 0.9;
+}
+
+.black-hole-animation {
+  position: relative;
+  width: 400rpx;
+  height: 400rpx;
+  margin: 0 auto 60rpx;
+}
+
+.black-hole-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(186, 134, 255, 0.3), rgba(255, 184, 222, 0.3));
+  animation: rotate 20s linear infinite;
+  box-shadow: 0 0 30rpx rgba(255, 255, 255, 0.3);
+}
+
+.black-hole-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 250rpx;
+  height: 250rpx;
+  border-radius: 50%;
+  background-color: #000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2;
+}
+
+.recording-text {
+  color: #fff;
+  font-size: 32rpx;
+  text-align: center;
+}
+
+@keyframes rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.slogan-text {
+  font-size: 36rpx;
+  color: rgba(255, 255, 255, 0.95);
+  line-height: 1.6;
+  text-align: center;
+  padding: 20rpx;
+  text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.3);
+  letter-spacing: 2rpx;
+  position: relative;
+}
+
+.slogan-text::before {
+  content: '"';
+  position: absolute;
+  left: -10rpx;
+  top: -10rpx;
+  font-size: 60rpx;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.slogan-text::after {
+  content: '"';
+  position: absolute;
+  right: -10rpx;
+  bottom: -30rpx;
+  font-size: 60rpx;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.encouragement-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60rpx 40rpx;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  border-radius: 30rpx;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.1);
+  animation: float 6s ease-in-out infinite;
+  width: 100%;
+  max-width: 600rpx;
+  margin: 0 auto;
 }
 
 .status-bar {
@@ -986,9 +1209,9 @@ export default {
 // 确保添加了字体图标
 @font-face {
   font-family: 'iconfont';  /* Project id 4812679 */
-  src: url('//at.alicdn.com/t/c/font_4812679_5fx7dxqo6ur.woff2?t=1739504210268') format('woff2'),
-       url('//at.alicdn.com/t/c/font_4812679_5fx7dxqo6ur.woff?t=1739504210268') format('woff'),
-       url('//at.alicdn.com/t/c/font_4812679_5fx7dxqo6ur.ttf?t=1739504210268') format('truetype');
+  src: url('//at.alicdn.com/t/c/font_4812679_jinvpf541wn.woff2?t=1741059504282') format('woff2'),
+       url('//at.alicdn.com/t/c/font_4812679_jinvpf541wn.woff?t=1741059504282') format('woff'),
+       url('//at.alicdn.com/t/c/font_4812679_jinvpf541wn.ttf?t=1741059504282') format('truetype');
 }
 
 .icon-mic {
@@ -1049,138 +1272,70 @@ export default {
   }
 }
 
+.encouragement-section {
+  width: 100%;
+  display: flex;
+  justify-content: center; /* 水平居中 */
+  align-items: center;
+  margin-top: 30rpx;
+  padding: 0 20rpx;
+  box-sizing: border-box;
+}
+
 .encouragement {
-  margin: 40rpx 30rpx;
-  padding: 40rpx;
-  // 使用更温暖的渐变背景
-  background: linear-gradient(
-    135deg, 
-    rgba(147, 197, 253, 0.15),  // 柔和的蓝色
-    rgba(196, 181, 253, 0.08)   // 淡紫色
-  );
-  backdrop-filter: blur(12px);
-  border-radius: 24rpx;
   text-align: center;
-  // 更柔和的边框
-  border: 1px solid rgba(147, 197, 253, 0.15);
+  max-width: 90%;
+  margin: 0 auto;
+  padding: 30rpx;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 16rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+  border: none; /* 确保没有边框 */
   position: relative;
-  z-index: 1;
-  // 更柔和的阴影
-  box-shadow: 0 8rpx 32rpx rgba(59, 130, 246, 0.08);
-  overflow: hidden;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(
-      circle at center,
-      rgba(147, 197, 253, 0.12) 0%,  // 柔和的蓝色光晕
-      rgba(196, 181, 253, 0.08) 30%, // 淡紫色过渡
-      transparent 70%
-    );
-    opacity: 0.6;
-    z-index: -1;
-    pointer-events: none;
-    animation: rotate 15s linear infinite;
-  }
-  
-  &.no-bubbles {
-    margin-bottom: 200rpx;
-  }
-  
-  .sentence {
-    font-size: 34rpx;
-    // 更温暖的文字颜色
-    background: linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.98),  // 纯白色起始
-      rgba(228, 228, 231, 0.95)   // 略微灰白色结束
-    );
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    line-height: 1.6;
-    margin: 8rpx 0;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    opacity: 0;
-    transform: translateY(10rpx);
-    text-align: center;
-    width: 100%;
-    display: block;
-    // 更柔和的文字阴影
-    text-shadow: 0 2rpx 4rpx rgba(59, 130, 246, 0.08);
-    font-weight: 400;
-    letter-spacing: 1rpx;
-    
-    &:first-child {
-      margin-top: 0;
-    }
-    
-    &:last-child {
-      margin-bottom: 0;
-    }
-    
-    &.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .cursor {
-    display: inline-block;
-    margin-left: 4rpx;
-    animation: blink 1.2s infinite;
-    font-weight: 200;
-    vertical-align: middle;
-    opacity: 0.8;
-  }
-
-  // 悬浮效果增强
-  &:hover {
-    background: linear-gradient(
-      135deg, 
-      rgba(147, 197, 253, 0.18),
-      rgba(196, 181, 253, 0.1)
-    );
-    
-    &::before {
-      opacity: 0.8;
-    }
-  }
+  overflow: hidden; /* 防止内容溢出 */
 }
 
-@keyframes blink {
-  0%, 100% { opacity: 0.8; }
-  50% { opacity: 0; }
+.encouragement::after {
+  display: none; /* 移除可能的伪元素下划线 */
 }
 
-@keyframes rotate {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+/* 改进句子样式 */
+.sentence {
+  display: inline;
+  font-size: 32rpx;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.6;
+  letter-spacing: 1rpx;
+  text-shadow: 0 1rpx 2rpx rgba(0, 0, 0, 0.2);
+  border-bottom: none; /* 确保没有下边框 */
+  position: relative;
+}
+
+.sentence::after {
+  display: none; /* 移除可能的伪元素下划线 */
+}
+
+/* 隐藏光标 */
+.cursor {
+  display: none;
 }
 
 .emotion-bubbles-container {
   position: relative;
   width: 100%;
-  height: 500rpx; /* 固定高度，避免与输入区域重叠 */
+  height: 450rpx; /* 减小高度，避免向上超过header */
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 200rpx; /* 增加底部间距，与输入框拉开距离 */
+  margin-top: 30rpx; /* 增加顶部间距，确保不会与header重叠 */
+  margin-bottom: 40rpx; /* 减小底部间距 */
   overflow: visible; /* 确保气泡可以溢出容器 */
 }
 
 .emotion-bubbles {
   position: relative;
   width: 600rpx;
-  height: 600rpx;
+  height: 450rpx; /* 调整高度 */
   margin: 0 auto;
 }
 
@@ -1361,15 +1516,6 @@ export default {
   z-index: 2;
 }
 
-// .black-hole-effect {
-//   position: absolute;
-//   top: 0;
-//   left: 0;
-//   width: 100%;
-//   height: 100%;
-//   z-index: 1; // 调整层级确保不会遮挡其他内容
-// }
-
 .input-section {
   position: fixed;
   bottom: 100rpx;
@@ -1499,6 +1645,141 @@ export default {
     pointer-events: none;
   }
 }
+
+.emotion-content-area {
+  position: relative;
+  width: 100%;
+  height: 750rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  transition: opacity 0.3s ease;
+  
+  &.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+.empty-state {
+  padding: 40rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+}
+
+.empty-content {
+  text-align: center;
+  max-width: 80%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.encouragement-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60rpx 40rpx;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  border-radius: 30rpx;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.1);
+  animation: float 6s ease-in-out infinite;
+  width: 100%;
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-15px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.tip-title {
+  font-size: 42rpx;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  margin-bottom: 30rpx;
+  line-height: 1.4;
+  letter-spacing: 2rpx;
+  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.2);
+}
+
+.highlight {
+  color: #7C4DFF;
+  font-weight: bold;
+  position: relative;
+  display: inline-block;
+  padding: 0 6rpx;
+}
+
+.highlight::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 8rpx;
+  background: linear-gradient(90deg, #7C4DFF, #448AFF);
+  border-radius: 4rpx;
+  opacity: 0.6;
+}
+
+.brand-text {
+  display: inline-block;
+  font-size: 48rpx;
+  font-weight: bold;
+  margin: 0 6rpx;
+  background: linear-gradient(90deg, #7C4DFF, #448AFF);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
+  position: relative;
+  z-index: 1;
+}
+
+.tip {
+  font-size: 32rpx;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.6;
+  margin-top: 20rpx;
+  position: relative;
+  padding: 20rpx;
+  border-radius: 20rpx;
+  max-width: 90%;
+}
+
+.tip::before {
+  content: '"';
+  font-size: 60rpx;
+  color: rgba(124, 77, 255, 0.3);
+  position: absolute;
+  top: -20rpx;
+  left: -10rpx;
+}
+
+.tip::after {
+  content: '"';
+  font-size: 60rpx;
+  color: rgba(124, 77, 255, 0.3);
+  position: absolute;
+  bottom: -40rpx;
+  right: -10rpx;
+}
 </style>
 
 <!-- 添加新的样式，确保气泡区域和输入区域不重叠 -->
@@ -1506,12 +1787,20 @@ export default {
 .emotion-bubbles-container {
   position: relative;
   width: 100%;
-  height: 500rpx; /* 固定高度，避免与输入区域重叠 */
+  height: 450rpx; /* 减小高度，避免向上超过header */
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 200rpx; /* 增加底部间距，与输入框拉开距离 */
+  margin-top: 30rpx; /* 增加顶部间距，确保不会与header重叠 */
+  margin-bottom: 40rpx; /* 减小底部间距 */
   overflow: visible; /* 确保气泡可以溢出容器 */
+}
+
+.emotion-bubbles {
+  position: relative;
+  width: 600rpx;
+  height: 450rpx; /* 调整高度 */
+  margin: 0 auto;
 }
 
 .input-section {
@@ -1537,5 +1826,38 @@ export default {
   flex-direction: column;
   min-height: 100vh;
   padding-bottom: 180rpx; /* 为底部固定的输入框留出空间 */
+}
+
+.header {
+    padding: 20rpx 30rpx;
+    display: flex;
+    align-items: center;
+    background: linear-gradient(180deg, #0A0B1B 0%, rgba(10, 11, 27, 0.9) 100%);
+    
+    .logo {
+      width: 60rpx;
+      height: 60rpx;
+      border-radius: 30rpx;
+    }
+    
+    .title {
+      margin-left: 20rpx;
+      font-size: 36rpx;
+      font-weight: 500;
+      color: #fff;
+    }
+    
+    .more {
+      margin-left: auto;
+      color: #fff;
+    }
+  }
+
+/* 修复字体问题，使用正确的字体引用 */
+@font-face {
+  font-family: 'iconfont';  /* Project id 4812679 */
+  src: url('//at.alicdn.com/t/c/font_4812679_jinvpf541wn.woff2?t=1741059504282') format('woff2'),
+       url('//at.alicdn.com/t/c/font_4812679_jinvpf541wn.woff?t=1741059504282') format('woff'),
+       url('//at.alicdn.com/t/c/font_4812679_jinvpf541wn.ttf?t=1741059504282') format('truetype');
 }
 </style>

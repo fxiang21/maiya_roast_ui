@@ -18,7 +18,7 @@ export default {
   props: {
     title: {
       type: String,
-      default: '麦芽管家',
+      default: '黑洞吐槽',
     },
   },
 };

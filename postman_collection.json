@@ -425,7 +425,7 @@
 							}
 						],
 						"url": {
-							"raw": "http://192.168.0.100:8001/user/profile",
+							"raw": "http://192.168.0.104:8001/user/profile",
 							"protocol": "http",
 							"host": [
 								"192",
@@ -485,7 +485,7 @@
 							"raw": "{\n  \"avatar\": \"http://example.com/new_avatar.jpg\",\n  \"nickname\": \"新昵称\",\n  \"email\": \"newemail@example.com\"\n}"
 						},
 						"url": {
-							"raw": "http://192.168.0.100:8001/user/update",
+							"raw": "http://192.168.0.104:8001/user/update",
 							"protocol": "http",
 							"host": [
 								"192",
@@ -542,7 +542,7 @@
 							}
 						],
 						"url": {
-							"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/like",
+							"raw": "http://192.168.0.104:8001/api/v1/speech/emotion/{{emotion_id}}/like",
 							"protocol": "http",
 							"host": [
 								"192",
@@ -574,7 +574,7 @@
 									}
 								],
 								"url": {
-									"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/like",
+									"raw": "http://192.168.0.104:8001/api/v1/speech/emotion/{{emotion_id}}/like",
 									"protocol": "http",
 									"host": [
 										"192",
@@ -613,7 +613,7 @@
 							}
 						],
 						"url": {
-							"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/like",
+							"raw": "http://192.168.0.104:8001/api/v1/speech/emotion/{{emotion_id}}/like",
 							"protocol": "http",
 							"host": [
 								"192",
@@ -645,7 +645,7 @@
 									}
 								],
 								"url": {
-									"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/like",
+									"raw": "http://192.168.0.104:8001/api/v1/speech/emotion/{{emotion_id}}/like",
 									"protocol": "http",
 									"host": [
 										"192",
@@ -684,7 +684,7 @@
 							}
 						],
 						"url": {
-							"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/dislike",
+							"raw": "http://192.168.0.104:8001/api/v1/speech/emotion/{{emotion_id}}/dislike",
 							"protocol": "http",
 							"host": [
 								"192",
@@ -716,7 +716,7 @@
 									}
 								],
 								"url": {
-									"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/dislike",
+									"raw": "http://192.168.0.104:8001/api/v1/speech/emotion/{{emotion_id}}/dislike",
 									"protocol": "http",
 									"host": [
 										"192",
@@ -755,7 +755,7 @@
 							}
 						],
 						"url": {
-							"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/dislike",
+							"raw": "http://192.168.0.104:8001/api/v1/speech/emotion/{{emotion_id}}/dislike",
 							"protocol": "http",
 							"host": [
 								"192",
@@ -787,7 +787,7 @@
 									}
 								],
 								"url": {
-									"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/dislike",
+									"raw": "http://192.168.0.104:8001/api/v1/speech/emotion/{{emotion_id}}/dislike",
 									"protocol": "http",
 									"host": [
 										"192",
@@ -835,7 +835,7 @@
 							"raw": "{\n    \"content\": \"加油，事情会变好的\"\n}"
 						},
 						"url": {
-							"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/comment",
+							"raw": "http://192.168.0.104:8001/api/v1/speech/emotion/{{emotion_id}}/comment",
 							"protocol": "http",
 							"host": [
 								"192",
@@ -876,7 +876,7 @@
 									"raw": "{\n    \"content\": \"加油，事情会变好的\"\n}"
 								},
 								"url": {
-									"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/comment",
+									"raw": "http://192.168.0.104:8001/api/v1/speech/emotion/{{emotion_id}}/comment",
 									"protocol": "http",
 									"host": [
 										"192",
@@ -915,7 +915,7 @@
 							}
 						],
 						"url": {
-							"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/comment/{{comment_id}}",
+							"raw": "http://192.168.0.104:8001/api/v1/speech/emotion/{{emotion_id}}/comment/{{comment_id}}",
 							"protocol": "http",
 							"host": [
 								"192",
@@ -948,7 +948,7 @@
 									}
 								],
 								"url": {
-									"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/comment/{{comment_id}}",
+									"raw": "http://192.168.0.104:8001/api/v1/speech/emotion/{{emotion_id}}/comment/{{comment_id}}",
 									"protocol": "http",
 									"host": [
 										"192",
@@ -988,7 +988,7 @@
 							}
 						],
 						"url": {
-							"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/interactions?type=comment&page=1&page_size=10",
+							"raw": "http://192.168.0.104:8001/api/v1/speech/emotion/{{emotion_id}}/interactions?type=comment&page=1&page_size=10",
 							"protocol": "http",
 							"host": [
 								"192",
@@ -1035,7 +1035,7 @@
 									}
 								],
 								"url": {
-									"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/interactions?type=comment&page=1&page_size=10",
+									"raw": "http://192.168.0.104:8001/api/v1/speech/emotion/{{emotion_id}}/interactions?type=comment&page=1&page_size=10",
 									"protocol": "http",
 									"host": [
 										"192",
@@ -1110,7 +1110,7 @@
 							}
 						],
 						"url": {
-							"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/toggle-like",
+							"raw": "http://192.168.0.104:8001/api/v1/speech/emotion/{{emotion_id}}/toggle-like",
 							"protocol": "http",
 							"host": [
 								"192",
@@ -1149,7 +1149,7 @@
 									}
 								],
 								"url": {
-									"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/toggle-like",
+									"raw": "http://192.168.0.104:8001/api/v1/speech/emotion/{{emotion_id}}/toggle-like",
 									"protocol": "http",
 									"host": [
 										"192",
@@ -1193,7 +1193,7 @@
 									}
 								],
 								"url": {
-									"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/toggle-like",
+									"raw": "http://192.168.0.104:8001/api/v1/speech/emotion/{{emotion_id}}/toggle-like",
 									"protocol": "http",
 									"host": [
 										"192",
@@ -1237,7 +1237,7 @@
 									}
 								],
 								"url": {
-									"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/toggle-like",
+									"raw": "http://192.168.0.104:8001/api/v1/speech/emotion/{{emotion_id}}/toggle-like",
 									"protocol": "http",
 									"host": [
 										"192",
@@ -1281,7 +1281,7 @@
 									}
 								],
 								"url": {
-									"raw": "http://192.168.0.100:8001/api/v1/speech/emotion/{{emotion_id}}/toggle-like",
+									"raw": "http://192.168.0.104:8001/api/v1/speech/emotion/{{emotion_id}}/toggle-like",
 									"protocol": "http",
 									"host": [
 										"192",

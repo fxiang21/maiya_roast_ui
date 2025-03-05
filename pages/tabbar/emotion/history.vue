@@ -105,12 +105,12 @@
         @clickLoadMore="loadMore" 
       />
 
-      <!-- 评论弹窗 -->
-      <uni-popup ref="commentPopup" type="bottom">
-        <view class="comment-popup">
+      <!-- 评论弹窗 - 使用遮罩层阻止事件穿透 -->
+      <view class="comment-overlay" v-if="showCommentPopup" @tap.stop="closeCommentDialog" @touchmove.stop.prevent>
+        <view class="comment-container" @tap.stop="onCommentContainerTap">
           <view class="comment-header">
-            <text>评论列表</text>
-            <text class="close-btn" @click="closeCommentDialog">×</text>
+            <text class="header-title">评论列表 ({{ totalComments || 0 }})</text>
+            <text class="close-btn" @tap="closeCommentDialog">×</text>
           </view>
           
           <!-- 评论列表 -->
@@ -118,67 +118,94 @@
             class="comment-list" 
             scroll-y 
             @scrolltolower="loadMoreComments"
+            :scroll-top="scrollTop"
+            @touchmove.stop
           >
-            <view v-if="commentList.length > 0">
+            <view v-if="commentList && commentList.length > 0">
               <view 
-                v-for="comment in commentList" 
-                :key="comment.id" 
+                v-for="(comment, index) in commentList" 
+                :key="index" 
                 class="comment-item"
               >
-                <view class="comment-user">
-                  <view class="user-avatar">
-                    <image 
-                      v-if="comment.user && comment.user.avatar" 
-                      :src="comment.user.avatar" 
-                      mode="aspectFill"
-                    />
-                    <text v-else class="iconfont default-avatar">&#xe83e;</text>
+                <!-- 头像 -->
+                <view class="avatar-container">
+                  <image 
+                    v-if="comment.user && comment.user.avatar" 
+                    :src="comment.user.avatar" 
+                    class="user-avatar"
+                    mode="aspectFill"
+                  />
+                  <view v-else class="default-avatar">
+                    <text class="avatar-text">匿</text>
                   </view>
-                  <view class="user-info">
-                    <view class="user-header">
-                      <text class="user-name">
-                        {{ comment.user ? comment.user.nickname : '匿名用户' }}
-                        <text v-if="comment.user && comment.user.is_anonymous" class="anonymous-tag">
-                          匿名
-                        </text>
-                      </text>
-                      <text class="comment-time">{{ formatTime(comment.created_at) }}</text>
+                </view>
+                
+                <!-- 评论内容区 -->
+                <view class="comment-content-container">
+                  <!-- 用户信息行 -->
+                  <view class="user-info-row">
+                    <text class="user-name">{{ comment.user ? comment.user.nickname || '匿名用户' : '匿名用户' }}</text>
+                    <view class="comment-meta">
+                      <text class="comment-time" v-if="comment.created_at">{{ formatTimeAgo(comment.created_at * 1000) }}</text>
+                      <text class="user-location" v-if="comment.user && comment.user.location">{{ comment.user.location }}</text>
                     </view>
-                    <view class="comment-content">{{ comment.content }}</view>
                   </view>
+                  
+                  <!-- 评论内容 -->
+                  <view class="comment-text">{{ comment.content }}</view>
+                  
+                  <!-- 操作按钮 -->
+                  <!-- <view class="comment-actions">
+                    <view class="action-btn">
+                      <text class="action-text">回复</text>
+                    </view>
+                    <view class="like-btn">
+                      <text class="iconfont icon-like"></text>
+                      <text class="like-count" v-if="comment.like_count">{{ comment.like_count }}</text>
+                    </view>
+                  </view> -->
                 </view>
               </view>
             </view>
             <view v-else class="no-comment">
               暂无评论
             </view>
-            <view v-if="isLoadingMore" class="loading-more">
+            <view v-if="isLoadingMore && !isAllLoaded" class="loading-more">
               加载中...
+            </view>
+            <view v-if="isAllLoaded && commentList.length > 0" class="all-loaded">
+              已加载全部评论
             </view>
           </scroll-view>
           
           <!-- 评论输入区域 -->
-          <view class="comment-input-area">
-            <textarea 
-              v-model="commentContent"
-              placeholder="请输入评论内容"
-              :maxlength="200"
-              class="comment-textarea"
-              auto-height
-            />
-            <view class="comment-footer">
-              <text class="word-count">{{ commentContent.length }}/200</text>
-              <button 
-                class="submit-btn" 
-                @click="submitComment" 
-                :disabled="!commentContent.trim()"
-              >
-                发送
-              </button>
+          <view class="comment-input-area" :class="{ 'expanded': isInputFocused }">
+            <view class="input-wrapper" @tap.stop="onInputTap">
+              <input
+                class="comment-input"
+                v-model="commentText"
+                placeholder="添加评论..."
+                :maxlength="200"
+                @focus="onInputFocus"
+                @blur="onInputBlur"
+                confirm-type="send"
+                @confirm="submitComment"
+              />
+              
+              <view class="comment-footer" v-if="isInputFocused">
+                <text class="word-count">{{ commentText.length }}/200</text>
+                <button 
+                  class="submit-btn" 
+                  :disabled="!commentText.trim() || isSubmitting" 
+                  @tap="submitComment"
+                >
+                  {{ isSubmitting ? '发送中...' : '发送' }}
+                </button>
+              </view>
             </view>
           </view>
         </view>
-      </uni-popup>
+      </view>
     </view>
   </template>
   
@@ -188,8 +215,8 @@
     toggleLike,
     toggleEmotionPublic, 
     deleteEmotion,
-    addComment,
-    getCommentList
+    getCommentList,
+    addComment
   } from "@/api/emotion";
   export default {
     data() {
@@ -225,11 +252,11 @@
           "内疚": "消极",
           "孤独": "消极"
         },
-        commentContent: '',
+        commentText: '',
         currentEmotionId: null,
         commentList: [],
         commentPage: 1,
-        commentPageSize: 10,
+        commentPageSize: 20,
         totalCommentPages: 1,
         isLoadingMore: false,
         isLoading: false, // 添加加载状态标记
@@ -240,7 +267,15 @@
           "记录下此刻的心情吧",
           "让黑洞听听你的故事"
         ],
-        currentRequest: null
+        currentRequest: null,
+        isSubmitting: false,
+        isInputFocused: false,
+        currentComplaintId: null,
+        totalComments: 0,
+        scrollTop: 0,
+        showCommentPopup: false,
+        isAllLoaded: false,
+        inputFocusTimer: null, // 添加一个计时器变量
       };
     },
     computed: {
@@ -352,67 +387,181 @@
       // 显示评论弹窗
       showCommentDialog(item) {
         this.currentEmotionId = item.id
-        this.commentContent = ''
+        this.commentText = ''
         this.commentList = []
         this.commentPage = 1
         this.loadComments()
-        this.$refs.commentPopup.open()
+        this.showCommentPopup = true
       },
       // 关闭评论弹窗
       closeCommentDialog() {
-        this.$refs.commentPopup.close()
-        this.commentContent = ''
-        this.currentEmotionId = null
+        this.showCommentPopup = false
+        this.commentText = ''
+        this.isInputFocused = false
+        this.preventBlur = false
+        
+        // 清除计时器
+        if (this.inputFocusTimer) {
+          clearTimeout(this.inputFocusTimer)
+          this.inputFocusTimer = null
+        }
       },
       // 加载评论
       loadComments() {
-        if (this.isLoadingMore) return
+        if (this.isLoading || !this.currentEmotionId) return;
         
-        this.isLoadingMore = true
+        this.isLoading = true;
+        console.log("加载评论，ID：", this.currentEmotionId, "页码：", this.commentPage);
+        
         getCommentList(
           this.currentEmotionId,
           this.commentPage,
           this.commentPageSize,
-          (res) => {
-            const data = res.data
-            if (this.commentPage === 1) {
-              this.commentList = data.data
-            } else {
-              this.commentList = [...this.commentList, ...data.data]
+          (response) => {
+            console.log("评论加载成功，原始数据:", response);
+            
+            // 正确处理返回数据
+            if (response && response.data) {
+              // 检查数据结构
+              let commentData = response.data.data || response.data || [];
+              let total = response.data.total || 0;
+              let totalPages = response.data.total_pages || 1;
+              
+              console.log("处理后的评论数据:", commentData);
+              
+              if (Array.isArray(commentData)) {
+                if (this.commentPage === 1) {
+                  this.commentList = commentData;
+                } else {
+                  this.commentList = [...this.commentList, ...commentData];
+                }
+                
+                this.totalComments = total;
+                this.totalCommentPages = totalPages;
+                this.isAllLoaded = this.commentPage >= this.totalCommentPages;
+              } else {
+                console.error("评论数据格式不正确:", commentData);
+              }
             }
-            this.totalCommentPages = data.total_pages
-            this.isLoadingMore = false
+            
+            this.isLoading = false;
+            this.isLoadingMore = false;
           },
           (error) => {
-            this.$u.toast(error.message)
-            this.isLoadingMore = false
+            console.error("加载评论失败:", error);
+            uni.showToast({
+              title: '加载评论失败',
+              icon: 'none'
+            });
+            
+            this.isLoading = false;
+            this.isLoadingMore = false;
           }
-        )
+        );
       },
       // 加载更多评论
       loadMoreComments() {
-        if (this.commentPage >= this.totalCommentPages) return
-        this.commentPage++
-        this.loadComments()
+        if (this.isLoading || this.isAllLoaded) return;
+        
+        console.log("加载更多评论，当前页码：", this.commentPage, "总页数：", this.totalCommentPages);
+        if (this.commentPage < this.totalCommentPages) {
+          this.commentPage++;
+          this.isLoadingMore = true;
+          this.loadComments();
+        }
       },
       // 提交评论
       submitComment() {
-        if (!this.commentContent.trim()) return
+        if (!this.commentText.trim() || this.isSubmitting || !this.currentEmotionId) return;
+        
+        this.isSubmitting = true;
+        this.preventBlur = true; // 防止提交过程中失焦
+        
+        console.log("提交评论，ID：", this.currentEmotionId, "内容：", this.commentText);
         
         addComment(
           this.currentEmotionId,
-          this.commentContent,
-          () => {
-            this.$u.toast('评论成功')
-            this.commentContent = ''
-            this.commentPage = 1
-            this.loadComments()
-            this.refreshCurrentPage()
+          this.commentText.trim(),
+          (response) => {
+            console.log("评论提交成功:", response);
+            
+            uni.showToast({
+              title: '评论发送成功',
+              icon: 'success'
+            });
+            
+            // 清空输入框并重新加载评论列表
+            this.commentText = '';
+            this.commentPage = 1;
+            this.isAllLoaded = false;
+            this.scrollTop = 0; // 滚动到顶部
+            this.loadComments();
+            
+            this.isSubmitting = false;
           },
           (error) => {
-            this.$u.toast(error.message)
+            console.error("提交评论失败:", error);
+            uni.showToast({
+              title: '提交评论失败: ' + (error.message || '未知错误'),
+              icon: 'none'
+            });
+            
+            this.isSubmitting = false;
           }
-        )
+        );
+      },
+      // 重置输入框焦点
+      resetInputFocus() {
+        if (this.isInputFocused && !this.commentText.trim()) {
+          this.isInputFocused = false;
+          console.log('重置输入框状态');
+        }
+      },
+      // 修复时间格式化函数
+      formatTimeAgo(timestamp) {
+        if (!timestamp) return '';
+        
+        try {
+          const now = new Date();
+          const commentTime = new Date(timestamp);
+          
+          // 检查时间戳是否有效
+          if (isNaN(commentTime.getTime())) {
+            console.log('无效的时间戳:', timestamp);
+            return '';
+          }
+          
+          const diffMs = now - commentTime;
+          
+          // 将毫秒转换为秒
+          const diffSec = Math.floor(diffMs / 1000);
+          
+          if (diffSec < 60) return '刚刚';
+          if (diffSec < 3600) return Math.floor(diffSec / 60) + '分钟前';
+          if (diffSec < 86400) return Math.floor(diffSec / 3600) + '小时前';
+          if (diffSec < 2592000) return Math.floor(diffSec / 86400) + '天前';
+          if (diffSec < 31536000) return Math.floor(diffSec / 2592000) + '个月前';
+          return Math.floor(diffSec / 31536000) + '年前';
+        } catch (error) {
+          console.error('格式化时间出错:', error);
+          return '';
+        }
+      },
+      // 刷新方法
+      refresh() {
+        this.init()
+      },
+      // 跳转到吐槽页面
+      navigateToEmotion() {
+        uni.switchTab({
+          url: '/pages/tabbar/emotion/home'
+        })
+      },
+      abortRequests() {
+        if (this.currentRequest) {
+          this.currentRequest.abort();
+          this.currentRequest = null;
+        }
       },
       // 刷新当前页数据
       refreshCurrentPage() {
@@ -477,27 +626,106 @@
         const s = ('0' + date.getSeconds()).slice(-2);
         return `${Y}-${M}-${D} ${h}:${m}:${s}`;
       },
-      // 格式化时间
-      formatTime(timestamp) {
-        const date = new Date(timestamp * 1000)
-        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+      // 重写输入框点击方法，简化逻辑
+      onInputTap() {
+        console.log('点击输入框');
+        this.isInputFocused = true;
+        
+        // 延迟执行，确保状态已更新
+        setTimeout(() => {
+          // 使用微信小程序原生API直接聚焦
+          const query = uni.createSelectorQuery().in(this);
+          query.select('.comment-input').context((res) => {
+            if (res && res.context) {
+              console.log('获取输入框成功，设置焦点');
+              res.context.focus();
+            }
+          }).exec();
+        }, 50);
       },
-      // 刷新方法
-      refresh() {
-        this.init()
+      // 简化输入框焦点事件处理
+      onInputFocus(e) {
+        console.log('输入框获得焦点');
+        this.isInputFocused = true;
+        this.preventBlur = true; // 阻止立即失焦
       },
-      // 跳转到吐槽页面
-      navigateToEmotion() {
-        uni.switchTab({
-          url: '/pages/tabbar/emotion/home'
-        })
-      },
-      abortRequests() {
-        if (this.currentRequest) {
-          this.currentRequest.abort();
-          this.currentRequest = null;
+      
+      onInputBlur(e) {
+        console.log('输入框失去焦点');
+        
+        // 如果是由于提交或其他操作导致的失焦，不处理
+        if (this.preventBlur) {
+          console.log('阻止失焦操作');
+          // 设置短暂延时后重置阻止标志
+          setTimeout(() => {
+            this.preventBlur = false;
+          }, 300);
+          return;
         }
-      }
+        
+        // 延迟处理失焦事件
+        setTimeout(() => {
+          if (!this.isSubmitting) {
+            this.isInputFocused = false;
+          }
+        }, 200);
+      },
+      // 在模板中点击评论区容器时
+      onCommentContainerTap() {
+        // 点击评论容器时，不关闭评论框
+        console.log('点击评论容器');
+      },
+      // 修复上拉加载更多方法
+      onReachBottom() {
+        console.log('触发上拉加载更多');
+        
+        // 如果已经加载所有页或正在加载中，则不处理
+        if (this.isLoading || this.page >= this.totalPages) {
+          console.log('已加载全部数据或正在加载中，跳过请求');
+          return;
+        }
+        
+        // 设置加载状态
+        this.isLoading = true;
+        
+        // 页码加1
+        this.page++;
+        
+        console.log(`加载第${this.page}页数据`);
+        
+        // 调用API获取更多数据
+        getEmotionHistory(
+          this.page,
+          this.pageSize,
+          (res) => {
+            const data = res.data;
+            
+            // 将新数据添加到现有数据中
+            this.historyData = [...this.historyData, ...data.data];
+            this.totalPages = data.total_pages;
+            
+            // 如果当前页 >= 总页数，标记为已加载所有数据
+            if (this.page >= this.totalPages) {
+              this.isAllLoaded = true;
+            }
+            
+            this.isLoading = false;
+            console.log(`成功加载第${this.page}页数据`);
+          },
+          (error) => {
+            console.error('加载更多数据失败:', error);
+            this.$u.toast(error.message || "加载更多失败");
+            this.isLoading = false;
+            // 页码回退，以便下次重试
+            this.page--;
+          }
+        );
+      },
+      // 添加滚动到底部事件处理(可能需要这个作为备用方案)
+      onScrollToLower() {
+        console.log('滚动到底部');
+        this.onReachBottom();
+      },
     },
   };
   </script>
@@ -713,279 +941,263 @@
     content: "\e6b4";
   }
 
-  .comment-popup {
-    background-color: #fff;
+  .comment-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+  }
+
+  .comment-container {
+    width: 100%;
+    height: 60vh;
+    background-color: #1a1a1a;
     border-radius: 24rpx 24rpx 0 0;
-    padding: 30rpx;
-    height: 80vh;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
-    
-    .comment-header {
-      padding-bottom: 20rpx;
-      border-bottom: 1rpx solid #eee;
-      font-size: 32rpx;
-      font-weight: 500;
-    }
-    
-    .comment-list {
-      flex: 1;
-      padding: 20rpx 0;
-      
-      .comment-item {
-        padding: 20rpx;
-        border-bottom: 1rpx solid #f5f5f5;
-        
-        .comment-user {
-          display: flex;
-          align-items: flex-start;
-          
-          .user-avatar {
-            width: 64rpx;
-            height: 64rpx;
-            border-radius: 50%;
-            margin-right: 16rpx;
-            background-color: #f5f5f5;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            
-            image {
-              width: 100%;
-              height: 100%;
-            }
-            
-            .default-avatar {
-              font-size: 40rpx;
-              color: #999;
-            }
-          }
-          
-          .user-info {
-            flex: 1;
-            
-            .user-header {
-              display: flex;
-              align-items: center;
-              margin-bottom: 8rpx;
-              
-              .user-name {
-                font-size: 28rpx;
-                color: #333;
-                margin-right: 12rpx;
-                
-                .anonymous-tag {
-                  font-size: 20rpx;
-                  color: #999;
-                  background-color: #f5f5f5;
-                  padding: 2rpx 8rpx;
-                  border-radius: 4rpx;
-                  margin-left: 8rpx;
-                }
-              }
-              
-              .comment-time {
-                font-size: 24rpx;
-                color: #999;
-              }
-            }
-            
-            .comment-content {
-              font-size: 28rpx;
-              color: #333;
-              line-height: 1.5;
-              word-break: break-all;
-            }
-          }
-        }
-      }
-      
-      .no-comment {
-        text-align: center;
-        color: #999;
-        padding: 40rpx 0;
-      }
-      
-      .loading-more {
-        text-align: center;
-        color: #999;
-        padding: 20rpx 0;
-      }
-    }
-    
-    .comment-input-area {
-      border-top: 1rpx solid #eee;
-      padding: 20rpx 0;
-      
-      .comment-textarea {
-        width: 100%;
-        min-height: 80rpx;
-        background: #f8f8f8;
-        border-radius: 12rpx;
-        padding: 16rpx 20rpx;
-        font-size: 28rpx;
-        color: #333;
-        margin-bottom: 16rpx;
-      }
-      
-      .comment-footer {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0 10rpx;
-        
-        .word-count {
-          color: #999;
-          font-size: 24rpx;
-        }
-        
-        .submit-btn {
-          margin: 0;
-          padding: 0 30rpx;
-          height: 64rpx;
-          line-height: 64rpx;
-          font-size: 28rpx;
-          color: #fff;
-          background: #007AFF;
-          border-radius: 32rpx;
-          border: none;
-          
-          &:disabled {
-            background: #ccc;
-          }
-          
-          &::after {
-            border: none;
-          }
-          
-          &:active {
-            opacity: 0.8;
-          }
-        }
-      }
-    }
+    box-shadow: 0 -4rpx 24rpx rgba(0, 0, 0, 0.3);
   }
 
-  .iconfont {
-    font-family: "iconfont" !important;
+  .comment-header {
+    padding: 24rpx 30rpx;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1rpx solid rgba(255, 255, 255, 0.1);
   }
 
-  /* 修正图标样式 */
-  .icon-lock:before {
-    content: "\e602"; // 锁定图标编码
+  .header-title {
+    font-size: 32rpx;
+    font-weight: 600;
+    color: #ffffff;
+    letter-spacing: 1rpx;
   }
 
-  .icon-unlock:before {
-    content: "\e882"; // 解锁图标编码
+  .close-btn {
+    font-size: 48rpx;
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1;
+    padding: 0 20rpx;
   }
 
-  .empty-state {
+  .comment-list {
+    flex: 1;
+    overflow-y: scroll;
+    padding: 0 30rpx;
+  }
+
+  .comment-item {
+    display: flex;
+    padding: 24rpx 0;
+    /* 移除评论之间的分隔线 */
+  }
+
+  .avatar-container {
+    margin-right: 20rpx;
+    flex-shrink: 0;
+  }
+
+  .user-avatar {
+    width: 80rpx;
+    height: 80rpx;
+    border-radius: 50%;
+    background-color: #f0f0f0;
+    border: 2rpx solid rgba(255, 255, 255, 0.2);
+  }
+
+  .default-avatar {
+    width: 80rpx;
+    height: 80rpx;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 100vh;
-    padding: 0 40rpx;
-    background: linear-gradient(180deg, #2c2c4c 0%, #1a1b2f 100%);
-    
-    .empty-content {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      transform: translateY(-10%);
-      
-      .main-empty {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        margin-bottom: 60rpx;
-        
-        .iconfont {
-          font-size: 120rpx;
-          color: rgba(255, 255, 255, 0.6);
-          margin-bottom: 30rpx;
-        }
-        
-        .empty-text {
-          font-size: 36rpx;
-          color: rgba(255, 255, 255, 0.8);
-          margin-bottom: 20rpx;
-          letter-spacing: 4rpx;
-          font-weight: 300;
-          text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.1);
-          
-          .highlight {
-            color: #7C4DFF;
-            font-weight: 500;
-            background: linear-gradient(135deg, #7C4DFF, #8B5CF6);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-          }
-          
-          .brand-text {
-            font-weight: 500;
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            padding: 0 4rpx;
-          }
-        }
-      }
-      
-      .encouragement {
-        margin-bottom: 80rpx;
-        text-align: center;
-        
-        .tip {
-          font-size: 28rpx;
-          color: rgba(255, 255, 255, 0.5);
-          font-style: italic;
-          line-height: 1.5;
-          padding: 20rpx 40rpx;
-          background: rgba(255, 255, 255, 0.05);
-          border-radius: 30rpx;
-          backdrop-filter: blur(10px);
-        }
-      }
-      
-      .goto-emotion-btn {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: linear-gradient(135deg, #6366f1, #8b5cf6);
-        color: #ffffff;
-        border: none;
-        padding: 20rpx 60rpx;
-        border-radius: 40rpx;
-        font-size: 28rpx;
-        box-shadow: 0 4rpx 12rpx rgba(99, 102, 241, 0.2);
-        
-        .iconfont {
-          font-size: 28rpx;
-          margin-right: 10rpx;
-        }
-        
-        &:active {
-          transform: scale(0.98);
-        }
-      }
-    }
+    box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.2);
   }
 
-  // 添加简单的渐入动画
-  .empty-content {
-    animation: fadeIn 0.8s ease-out;
+  .avatar-text {
+    color: #ffffff;
+    font-size: 32rpx;
+    font-weight: 500;
+  }
+
+  .comment-content-container {
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .user-info-row {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    margin-bottom: 8rpx;
+  }
+
+  .user-name {
+    font-size: 24rpx;  /* 减小用户名字体 */
+    color: rgba(255, 255, 255, 0.7);  /* 降低亮度 */
+    font-weight: normal;  /* 移除粗体 */
+    margin-right: 12rpx;
+  }
+
+  .comment-meta {
+    font-size: 22rpx;  /* 减小元数据字体 */
+    color: rgba(255, 255, 255, 0.5);  /* 进一步降低亮度 */
+    display: flex;
+    align-items: center;
+  }
+
+  .comment-time {
+    margin-right: 12rpx;
+  }
+
+  .user-location {
+    margin-left: 6rpx;
+    font-style: italic;
+  }
+
+  .comment-text {
+    font-size: 28rpx;  /* 保持评论内容字体大小 */
+    color: rgba(255, 255, 255, 0.95);  /* 提高亮度，突出内容 */
+    line-height: 1.6;
+    margin-bottom: 12rpx;
+    word-break: break-all;
+    letter-spacing: 0.5rpx;
+    font-weight: 400;  /* 适当加粗，提高可读性 */
+  }
+
+  .comment-actions {
+    display: flex;
+    align-items: center;
+    margin-top: 8rpx;
+  }
+
+  .action-btn, .like-btn {
+    margin-right: 32rpx;
+    font-size: 24rpx;
+    color: rgba(255, 255, 255, 0.6);
+    display: flex;
+    align-items: center;
+  }
+
+  .action-text {
+    font-size: 26rpx;
+  }
+
+  .like-btn {
+    display: flex;
+    align-items: center;
+  }
+
+  .icon-like {
+    font-size: 28rpx;
+    margin-right: 8rpx;
+  }
+
+  .like-count {
+    font-size: 26rpx;
+  }
+
+  .no-comment {
+    text-align: center;
+    padding: 60rpx 0;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 28rpx;
+    font-style: italic;
+  }
+
+  .loading-more, .all-loaded {
+    text-align: center;
+    padding: 20rpx 0;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 24rpx;
+  }
+
+  /* 输入框样式优化 */
+  .comment-input-area {
+    padding: 20rpx 30rpx;
+    /* 移除评论区和输入框之间的分隔线 */
+    background-color: rgba(30, 30, 30, 0.95);
+  }
+
+  .input-wrapper {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 36rpx;
+    padding: 16rpx 24rpx;
+    transition: all 0.3s ease;
+  }
+
+  .comment-input {
+    width: 100%;
+    height: 72rpx;
+    line-height: 1.5;
+    font-size: 28rpx;
+    color: #fff;
+    background: transparent;
+  }
+
+  .comment-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 16rpx;
+    padding-top: 16rpx;
+    /* 保留这个分隔线，它是输入框内部的 */
+    border-top: 1rpx solid rgba(255, 255, 255, 0.1);
+    animation: fadeIn 0.3s ease;
+  }
+
+  .word-count {
+    font-size: 24rpx;
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .submit-btn {
+    margin: 0;
+    padding: 0 30rpx;
+    height: 64rpx;
+    line-height: 64rpx;
+    font-size: 28rpx;
+    color: #fff;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border-radius: 32rpx;
+    border: none;
+    font-weight: 500;
+    letter-spacing: 1rpx;
+  }
+
+  .submit-btn:disabled {
+    opacity: 0.5;
+  }
+
+  .submit-btn::after {
+    border: none;
+  }
+
+  .submit-btn:active {
+    opacity: 0.8;
+  }
+
+  .expanded .input-wrapper {
+    background: rgba(255, 255, 255, 0.15);
   }
 
   @keyframes fadeIn {
     from {
       opacity: 0;
-      transform: translateY(-5%);
+      transform: translateY(10rpx);
     }
     to {
       opacity: 1;
-      transform: translateY(-10%);
+      transform: translateY(0);
     }
   }
-
   </style>
